@@ -1,0 +1,29 @@
+model Business {
+  id             String  @id @default(cuid())
+  userId         String  @unique
+  name           String
+  logo           String?
+  email          String?
+  phone          String?
+  website        String?
+  address        String?
+  city           String?
+  state          String?
+  country        String?
+  zipCode        String?
+  taxNumber      String?
+  vatNumber      String?
+  currency       String  @default("USD")
+  taxRate        Float   @default(0)
+  invoicePrefix  String  @default("INV")
+  nextNumber     Int     @default(1)
+  defaultDueDays Int     @default(30)
+  defaultNotes   String?
+  defaultTerms   String?
+  primaryColor   String?
+  accentColor    String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("businesses")
+}

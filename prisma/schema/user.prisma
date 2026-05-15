@@ -1,0 +1,29 @@
+model User {
+  id                  String    @id @default(cuid())
+  email               String    @unique
+  password            String
+  name                String
+  avatar              String?
+  isVerified          Boolean   @default(false)
+  verificationToken   String?
+  verificationExpiry  DateTime?
+  resetPasswordToken  String?
+  resetPasswordExpiry DateTime?
+  refreshToken        String?
+  lastLoginAt         DateTime?
+  loginCount          Int       @default(0)
+  isActive            Boolean   @default(true)
+  deletedAt           DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  business            Business?
+  clients             Client[]
+  invoices            Invoice[]
+  subscription        Subscription?
+  notifications       Notification[]
+  activityLogs        ActivityLog[]
+  recurringSchedules  RecurringSchedule[]
+
+  @@map("users")
+}

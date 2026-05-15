@@ -1,0 +1,13 @@
+model Attachment {
+  id        String   @id @default(cuid())
+  invoiceId String
+  name      String
+  url       String
+  size      Int
+  mimeType  String
+  createdAt DateTime @default(now())
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@map("attachments")
+}

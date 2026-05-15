@@ -1,0 +1,17 @@
+model Payment {
+  id              String        @id @default(cuid())
+  invoiceId       String
+  stripeSessionId String?       @unique
+  stripePaymentId String?       @unique
+  amount          Float
+  currency        String        @default("USD")
+  status          PaymentStatus @default(PENDING)
+  method          PaymentMethod @default(STRIPE)
+  note            String?
+  paidAt          DateTime?
+  createdAt       DateTime      @default(now())
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}

@@ -1,6 +1,7 @@
 import "dotenv/config";
 
 import app from "./app";
+import { prisma } from "./lib/prisma";
 
 const PORT = Number(process.env.PORT) || 5000;
 
@@ -12,7 +13,8 @@ const server = app.listen(PORT, () => {
 
 const shutdown = (signal: string) => {
   console.log(`${signal} received. Shutting down...`);
-  server.close(() => {
+  server.close(async () => {
+    await prisma.$disconnect();
     process.exit(0);
   });
 };

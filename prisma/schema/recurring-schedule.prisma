@@ -1,0 +1,17 @@
+model RecurringSchedule {
+  id        String             @id @default(cuid())
+  userId    String
+  clientId  String
+  frequency RecurringFrequency
+  nextRunAt DateTime
+  lastRunAt DateTime?
+  isActive  Boolean            @default(true)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client   Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  invoices Invoice[]
+
+  @@map("recurring_schedules")
+}
