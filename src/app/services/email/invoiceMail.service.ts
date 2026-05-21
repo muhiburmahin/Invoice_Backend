@@ -39,6 +39,7 @@ function buildInvoiceEmailHtml(input: {
   data: InvoicePrintData;
   personalMessage?: string | null;
   isReminder?: boolean;
+  portalUrl?: string | null;
 }): string {
   const { business, client, invoice } = input.data;
   const headline = input.isReminder
@@ -47,6 +48,10 @@ function buildInvoiceEmailHtml(input: {
 
   const messageBlock = input.personalMessage
     ? `<p style="margin:16px 0;padding:12px;background:#f9fafb;border-radius:6px;">${escapeHtml(input.personalMessage)}</p>`
+    : "";
+
+  const portalBlock = input.portalUrl
+    ? `<p style="margin-top:16px;"><a href="${escapeHtml(input.portalUrl)}" style="color:#2563eb;">View invoice online</a></p>`
     : "";
 
   return `<!DOCTYPE html>
@@ -67,6 +72,7 @@ function buildInvoiceEmailHtml(input: {
       <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">Amount due</td><td><strong>${formatMoney(invoice.balanceDue > 0 ? invoice.balanceDue : invoice.total, invoice.currency)}</strong></td></tr>
     </table>
     <p>The invoice PDF is attached to this email.</p>
+    ${portalBlock}
     <p style="color:#6b7280;font-size:12px;margin-top:24px;">Sent via ${escapeHtml(business.name)}</p>
   </body>
 </html>`;
@@ -76,6 +82,7 @@ function buildInvoiceEmailText(input: {
   data: InvoicePrintData;
   personalMessage?: string | null;
   isReminder?: boolean;
+  portalUrl?: string | null;
 }): string {
   const { business, client, invoice } = input.data;
   const lines = [
@@ -96,6 +103,9 @@ function buildInvoiceEmailText(input: {
   if (input.personalMessage) {
     lines.push("", input.personalMessage);
   }
+  if (input.portalUrl) {
+    lines.push("", `View online: ${input.portalUrl}`);
+  }
   return lines.join("\n");
 }
 
@@ -105,6 +115,7 @@ export async function sendInvoiceEmail(input: {
   pdfBuffer: Buffer;
   personalMessage?: string | null;
   isReminder?: boolean;
+  portalUrl?: string | null;
 }): Promise<void> {
   assertEmailConfigured();
 
@@ -119,11 +130,13 @@ export async function sendInvoiceEmail(input: {
       data: input.data,
       personalMessage: input.personalMessage,
       isReminder: input.isReminder,
+      portalUrl: input.portalUrl,
     }),
     text: buildInvoiceEmailText({
       data: input.data,
       personalMessage: input.personalMessage,
       isReminder: input.isReminder,
+      portalUrl: input.portalUrl,
     }),
     attachments: [
       {

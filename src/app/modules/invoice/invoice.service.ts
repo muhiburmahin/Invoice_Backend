@@ -44,6 +44,7 @@ import {
   roundMoney,
 } from "./invoice.helpers";
 import { assertRecurringScheduleLink } from "../recurring/recurring.helpers";
+import { getClientPortalLink } from "../portal/portal.helpers";
 import type {
   CreateInvoiceInput,
   ListInvoicesQuery,
@@ -425,13 +426,17 @@ export async function sendInvoice(
   assertSendableInvoice({ total: current.total, items: current.items });
 
   const recipient = input.to ?? current.client.email;
-  const { buffer, data } = await getInvoicePdfAsset(userId, invoiceId);
+  const [pdfAsset, portalUrl] = await Promise.all([
+    getInvoicePdfAsset(userId, invoiceId),
+    getClientPortalLink(userId, current.clientId),
+  ]);
 
   await sendInvoiceEmail({
     to: recipient,
-    data,
-    pdfBuffer: buffer,
+    data: pdfAsset.data,
+    pdfBuffer: pdfAsset.buffer,
     personalMessage: normaliseNullable(input.message),
+    portalUrl,
   });
 
   const now = new Date();
@@ -479,14 +484,18 @@ export async function remindInvoice(
   }
 
   const recipient = input.to ?? current.client.email;
-  const { buffer, data } = await getInvoicePdfAsset(userId, invoiceId);
+  const [pdfAsset, portalUrl] = await Promise.all([
+    getInvoicePdfAsset(userId, invoiceId),
+    getClientPortalLink(userId, current.clientId),
+  ]);
 
   await sendInvoiceEmail({
     to: recipient,
-    data,
-    pdfBuffer: buffer,
+    data: pdfAsset.data,
+    pdfBuffer: pdfAsset.buffer,
     personalMessage: normaliseNullable(input.message),
     isReminder: true,
+    portalUrl,
   });
 
   await prisma.invoice.update({

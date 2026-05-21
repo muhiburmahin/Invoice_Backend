@@ -16,6 +16,7 @@ import { businessRouter } from "../../modules/business";
 import { clientRouter } from "../../modules/client";
 import { invoiceRouter } from "../../modules/invoice";
 import { paymentRouter } from "../../modules/payment";
+import { portalRouter } from "../../modules/portal";
 import { recurringRouter } from "../../modules/recurring";
 import { billingRouter } from "./billing.routes";
 
@@ -28,6 +29,7 @@ const v1Router = Router();
 
 v1Router.use("/auth", authRouter);
 v1Router.use("/admin", adminRouter);
+v1Router.use("/portal", portalRouter);
 
 const protectedV1 = Router();
 protectedV1.use(requireAuth, requireActiveUser, bootstrapUser, assertWorkspace);
