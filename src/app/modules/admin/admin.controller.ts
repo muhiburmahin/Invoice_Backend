@@ -137,8 +137,11 @@ export const runScheduledJobsHandler: RequestHandler = catchAsync(
       req.body,
     );
     sendSuccess(res, {
-      result,
-      message: "Scheduled jobs completed successfully",
+      ...("queued" in result ? { queued: result.queued, jobId: result.jobId } : { result }),
+      message:
+        "message" in result && typeof result.message === "string"
+          ? result.message
+          : "Scheduled jobs completed successfully",
     });
   },
 );

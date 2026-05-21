@@ -17,6 +17,11 @@ import {
 } from "../../modules/payment/payment.helpers";
 import { getStripeClient, isStripeConfigured } from "./stripe.client";
 import { toStripeMinorUnits } from "./stripeAmount";
+import {
+  handleSubscriptionCheckoutCompleted,
+  handleSubscriptionDeleted,
+  syncSubscriptionFromStripe,
+} from "./stripeSubscription.service";
 
 function assertStripeBillingEnabled(): void {
   if (!features.isBillingEnabled()) {
@@ -327,11 +332,26 @@ export async function handleStripeWebhook(req: Request): Promise<{ received: tru
   }
 
   switch (event.type) {
-    case "checkout.session.completed":
-      await handleCheckoutSessionCompleted(event.data.object as Stripe.Checkout.Session);
+    case "checkout.session.completed": {
+      const session = event.data.object as Stripe.Checkout.Session;
+      if (session.mode === "subscription") {
+        await handleSubscriptionCheckoutCompleted(session);
+      } else {
+        await handleCheckoutSessionCompleted(session);
+      }
       break;
+    }
     case "checkout.session.expired":
       await handleCheckoutSessionExpired(event.data.object as Stripe.Checkout.Session);
+      break;
+    case "customer.subscription.created":
+    case "customer.subscription.updated":
+      await syncSubscriptionFromStripe(
+        event.data.object as Stripe.Subscription,
+      );
+      break;
+    case "customer.subscription.deleted":
+      await handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
       break;
     default:
       break;

@@ -57,6 +57,8 @@ const envSchema = z
 
     STRIPE_SECRET_KEY: z.string().optional(),
     STRIPE_WEBHOOK_SECRET: z.string().optional(),
+    STRIPE_PRICE_PRO_MONTHLY: z.string().optional(),
+    STRIPE_PRICE_ENTERPRISE_MONTHLY: z.string().optional(),
 
     FEATURE_BILLING: z
       .string()

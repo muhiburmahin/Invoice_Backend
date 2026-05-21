@@ -65,6 +65,10 @@ export const config = {
   stripe: {
     secretKey: env.STRIPE_SECRET_KEY,
     webhookSecret: env.STRIPE_WEBHOOK_SECRET,
+    prices: {
+      proMonthly: env.STRIPE_PRICE_PRO_MONTHLY,
+      enterpriseMonthly: env.STRIPE_PRICE_ENTERPRISE_MONTHLY,
+    },
   },
 
   features: {

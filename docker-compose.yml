@@ -30,6 +30,21 @@ services:
       CLIENT_URL: http://localhost:5173
       BETTER_AUTH_SECRET: dev-better-auth-secret-min-32-characters-long!!
       REDIS_URL: redis://redis:6379
+      FEATURE_SCHEDULED_JOBS: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  worker:
+    build: .
+    command: npm run worker
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://invoice:invoice@postgres:5432/invoice
+      REDIS_URL: redis://redis:6379
+      FEATURE_SCHEDULED_JOBS: "true"
     depends_on:
       postgres:
         condition: service_healthy

@@ -12,7 +12,8 @@ import { prisma } from "../../shared/prisma";
 import { logger } from "../../shared/logger";
 import { auth } from "../../lib/auth";
 import { writeAuditLog } from "../../services/audit/auditLog.service";
-import { runScheduledJobs, SCHEDULED_JOB_NAMES } from "../../services/jobs";
+import { SCHEDULED_JOB_NAMES } from "../../services/jobs";
+import { triggerScheduledJobs } from "../../services/jobs/scheduler";
 import { notifySubscriptionCancelled } from "../../services/notification";
 import { getRequestIp } from "../auth/auth.helpers";
 
@@ -664,23 +665,36 @@ export async function runAdminScheduledJobs(
 ) {
   assertCapability(actorRole, "runScheduledJobs");
 
-  const result = await runScheduledJobs({ jobs: input.jobs });
+  const outcome = await triggerScheduledJobs({ jobs: input.jobs });
 
   await writeAuditLog({
     userId: actorId,
     action: "admin.jobs.run",
     metadata: {
       jobs: input.jobs ?? [...SCHEDULED_JOB_NAMES],
-      durationMs: result.durationMs,
-      summary: result.jobs.map((job) => ({
-        name: job.name,
-        durationMs: job.durationMs,
-        result: job.result,
-      })),
+      mode: outcome.mode,
+      ...(outcome.mode === "queued"
+        ? { jobId: outcome.jobId }
+        : {
+            durationMs: outcome.result.durationMs,
+            summary: outcome.result.jobs.map((job) => ({
+              name: job.name,
+              durationMs: job.durationMs,
+              result: job.result,
+            })),
+          }),
     } as Prisma.InputJsonValue,
     ipAddress: getRequestIp(req),
     userAgent: req.get("user-agent") ?? undefined,
   });
 
-  return result;
+  if (outcome.mode === "queued") {
+    return {
+      queued: true,
+      jobId: outcome.jobId,
+      message: "Scheduled jobs queued for background processing",
+    };
+  }
+
+  return outcome.result;
 }

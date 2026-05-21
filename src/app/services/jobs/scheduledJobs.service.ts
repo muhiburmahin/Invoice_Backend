@@ -50,6 +50,12 @@ function resolveJobs(jobs?: ScheduledJobName[]): ScheduledJobName[] {
   return unique;
 }
 
+export async function runScheduledJobByName(
+  name: ScheduledJobName,
+): Promise<unknown> {
+  return JOB_RUNNERS[name]();
+}
+
 export async function runScheduledJobs(input?: {
   jobs?: ScheduledJobName[];
 }): Promise<RunScheduledJobsResult> {

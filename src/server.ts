@@ -2,6 +2,8 @@ import "dotenv/config";
 
 import app from "./app";
 import { config } from "./app/config";
+import { closeRedisConnection } from "./app/infrastructure/redis";
+import { closeScheduledJobsQueue } from "./app/infrastructure/scheduledJobs.queue";
 import { prisma } from "./app/shared/prisma";
 import { logger } from "./app/shared/logger";
 import { startScheduledJobs, stopScheduledJobs } from "./app/services/jobs";
@@ -17,7 +19,11 @@ const server = app.listen(config.port, () => {
 
 const shutdown = (signal: string) => {
   logger.info(`${signal} received. Shutting down...`);
-  stopScheduledJobs();
+  void (async () => {
+    await stopScheduledJobs();
+    await closeScheduledJobsQueue();
+    await closeRedisConnection();
+  })();
   const force = setTimeout(() => {
     logger.error("Forced exit after shutdown timeout");
     process.exit(1);
