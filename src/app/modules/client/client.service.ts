@@ -291,13 +291,16 @@ export async function getClientStats(userId: string) {
 /* -------------------------------------------------------------------------- */
 
 export async function getClientDetail(userId: string, clientId: string) {
-  const [client, invoiceStats] = await Promise.all([
+  const [client, invoiceStats, activeRecurringSchedules] = await Promise.all([
     findOwnedClient(userId, clientId),
     prisma.invoice.groupBy({
       by: ["status"],
       where: { userId, clientId, deletedAt: null },
       _count: { _all: true },
       _sum: { total: true, balanceDue: true },
+    }),
+    prisma.recurringSchedule.count({
+      where: { userId, clientId, isActive: true },
     }),
   ]);
 
@@ -333,6 +336,7 @@ export async function getClientDetail(userId: string, clientId: string) {
       invoices: invoiceCount,
       totalInvoiced,
       outstandingBalance,
+      activeRecurringSchedules,
       byStatus,
     },
   };

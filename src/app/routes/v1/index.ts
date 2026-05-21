@@ -14,6 +14,9 @@ import { adminRouter } from "../../modules/admin";
 import { authRouter } from "../../modules/auth";
 import { businessRouter } from "../../modules/business";
 import { clientRouter } from "../../modules/client";
+import { invoiceRouter } from "../../modules/invoice";
+import { paymentRouter } from "../../modules/payment";
+import { recurringRouter } from "../../modules/recurring";
 import { billingRouter } from "./billing.routes";
 
 /**
@@ -44,6 +47,9 @@ protectedV1.get(
 
 protectedV1.use("/business", businessRouter);
 protectedV1.use("/clients", clientRouter);
+protectedV1.use("/invoices", invoiceRouter);
+protectedV1.use("/payments", paymentRouter);
+protectedV1.use("/recurring-schedules", recurringRouter);
 protectedV1.use("/billing", billingRouter);
 
 v1Router.use(protectedV1);

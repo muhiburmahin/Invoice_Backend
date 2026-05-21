@@ -40,6 +40,7 @@ export async function getUsageSnapshot(userId: string): Promise<UsageSnapshot> {
 export async function assertWithinPlanLimits(
   userId: string,
   resource: "clients" | "invoices" | "recurring",
+  options?: { skipRecurringCount?: boolean },
 ): Promise<void> {
   const usage = await getUsageSnapshot(userId);
   const limits = getPlanLimits(usage.plan);
@@ -65,17 +66,29 @@ export async function assertWithinPlanLimits(
     });
   }
 
-  if (
-    resource === "recurring" &&
-    usage.recurringSchedules >= limits.maxRecurringSchedules
-  ) {
-    throw new ApiError(403, "Recurring schedule limit reached for your plan", {
-      code: "PLAN_LIMIT_RECURRING",
-      details: {
-        plan: usage.plan,
-        limit: limits.maxRecurringSchedules,
-        used: usage.recurringSchedules,
-      },
-    });
+  if (resource === "recurring") {
+    if (limits.maxRecurringSchedules === 0) {
+      throw new ApiError(
+        403,
+        "Recurring invoicing is not available on your plan",
+        {
+          code: "PLAN_FEATURE_UNAVAILABLE",
+          details: { plan: usage.plan },
+        },
+      );
+    }
+
+    if (usage.recurringSchedules >= limits.maxRecurringSchedules) {
+      if (!options?.skipRecurringCount) {
+        throw new ApiError(403, "Recurring schedule limit reached for your plan", {
+          code: "PLAN_LIMIT_RECURRING",
+          details: {
+            plan: usage.plan,
+            limit: limits.maxRecurringSchedules,
+            used: usage.recurringSchedules,
+          },
+        });
+      }
+    }
   }
 }
