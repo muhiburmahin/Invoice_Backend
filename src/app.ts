@@ -9,33 +9,83 @@ import helmet from "helmet";
 import morgan from "morgan";
 
 import { config } from "./app/config";
-import { requestId, globalErrorHandler, notFound } from "./app/middlewares";
-import { apiRouter } from "./app/routes";
+import {
+  globalErrorHandler,
+  notFound,
+  requestId,
+  requestTimeout,
+  workspaceContext,
+} from "./app/middlewares";
+import { systemRouter } from "./app/routes/system.routes";
+import { v1Router } from "./app/routes";
+import { stripeWebhookHandler } from "./app/routes/v1/billing.routes";
 import { auth } from "./app/lib/auth";
+import { catchAsync } from "./app/shared/catchAsync";
 import { sendSuccess } from "./app/shared/sendResponse";
 
 const app = express();
 
+if (config.trustProxy) {
+  app.set("trust proxy", 1);
+}
+
 app.use(requestId);
-app.use(helmet());
+app.use(workspaceContext);
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+  }),
+);
 app.use(
   cors({
-    origin: config.clientUrl,
+    origin: (origin, callback) => {
+      const allowed = config.corsOrigins;
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+      if (allowed.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(null, false);
+    },
     credentials: true,
   }),
 );
 app.use(compression());
-app.use(morgan(config.isProduction ? "combined" : "dev"));
+
+morgan.token("request-id", (req: Request) => req.requestId ?? "-");
+app.use(
+  morgan(
+    ":request-id :remote-addr :method :url :status :res[content-length] - :response-time ms",
+    {
+      skip: () => config.isTest,
+    },
+  ),
+);
+
 app.use(cookieParser());
 app.all("/api/auth/{*any}", toNodeHandler(auth));
+
+app.post(
+  "/api/v1/billing/webhook/stripe",
+  express.raw({ type: "application/json" }),
+  catchAsync(stripeWebhookHandler),
+);
+
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use(requestTimeout());
+
+app.use("/health", systemRouter);
 
 app.use(
   "/api",
   rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100,
+    windowMs: config.rateLimitWindowMs,
+    max: config.rateLimitMax,
     standardHeaders: true,
     legacyHeaders: false,
     skip: (req) => req.originalUrl.startsWith("/api/auth"),
@@ -46,11 +96,7 @@ app.get("/", (_req: Request, res: Response) => {
   sendSuccess(res, { message: "Invoice API", version: "1.0.0" });
 });
 
-app.get("/health", (_req: Request, res: Response) => {
-  sendSuccess(res, { status: "ok", message: "Server is running" });
-});
-
-app.use("/api", apiRouter);
+app.use("/api/v1", v1Router);
 
 app.use(notFound);
 app.use(globalErrorHandler);

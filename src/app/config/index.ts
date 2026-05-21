@@ -1,32 +1,76 @@
-/**
- * Central environment configuration.
- * Prefer this over reading `process.env` directly in feature code.
- */
+import type { Env } from "./env";
+import { getEnv } from "./env";
 
-function n(key: string, fallback: number): number {
-  const v = process.env[key];
-  if (v === undefined || v === "") return fallback;
-  const num = Number(v);
-  return Number.isFinite(num) ? num : fallback;
+const env: Env = getEnv();
+
+function corsOriginsList(): string[] {
+  if (env.CORS_ORIGINS?.trim()) {
+    return env.CORS_ORIGINS.split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+  return [env.CLIENT_URL];
 }
 
+/**
+ * Application configuration derived from validated env.
+ * Import this instead of reading `process.env` in features.
+ */
 export const config = {
-  nodeEnv: process.env.NODE_ENV ?? "development",
-  isProduction: process.env.NODE_ENV === "production",
-  port: n("PORT", 5000),
+  nodeEnv: env.NODE_ENV,
+  isProduction: env.NODE_ENV === "production",
+  isTest: env.NODE_ENV === "test",
 
-  clientUrl: process.env.CLIENT_URL ?? "http://localhost:5173",
+  port: env.PORT,
 
-  databaseUrl: process.env.DATABASE_URL ?? "",
+  databaseUrl: env.DATABASE_URL,
 
-  betterAuthSecret: process.env.BETTER_AUTH_SECRET,
-  betterAuthUrl: process.env.BETTER_AUTH_URL,
+  clientUrl: env.CLIENT_URL,
+  corsOrigins: corsOriginsList(),
 
-  googleClientId: process.env.GOOGLE_CLIENT_ID,
-  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
+  trustProxy: Boolean(env.TRUST_PROXY),
 
-  githubClientId: process.env.GITHUB_CLIENT_ID,
-  githubClientSecret: process.env.GITHUB_CLIENT_SECRET,
+  requestTimeoutMs: env.REQUEST_TIMEOUT_MS,
 
-  logLevel: process.env.LOG_LEVEL,
+  rateLimitWindowMs: env.RATE_LIMIT_WINDOW_MS,
+  rateLimitMax: env.RATE_LIMIT_MAX,
+
+  betterAuthSecret: env.BETTER_AUTH_SECRET,
+  betterAuthUrl: env.BETTER_AUTH_URL,
+
+  googleClientId: env.GOOGLE_CLIENT_ID,
+  googleClientSecret: env.GOOGLE_CLIENT_SECRET,
+  githubClientId: env.GITHUB_CLIENT_ID,
+  githubClientSecret: env.GITHUB_CLIENT_SECRET,
+
+  logLevel: env.LOG_LEVEL,
+
+  redisUrl: env.REDIS_URL,
+
+  smtp: {
+    host: env.SMTP_HOST,
+    port: env.SMTP_PORT,
+    secure: env.SMTP_SECURE,
+    user: env.SMTP_USER,
+    pass: env.SMTP_PASS,
+    from: env.SMTP_FROM,
+  },
+
+  cloudinary: {
+    cloudName: env.CLOUDINARY_CLOUD_NAME,
+    apiKey: env.CLOUDINARY_API_KEY,
+    apiSecret: env.CLOUDINARY_API_SECRET,
+  },
+
+  stripe: {
+    secretKey: env.STRIPE_SECRET_KEY,
+    webhookSecret: env.STRIPE_WEBHOOK_SECRET,
+  },
+
+  features: {
+    billing: Boolean(env.FEATURE_BILLING),
+    auditLog: Boolean(env.FEATURE_AUDIT_LOG),
+  },
 } as const;
+
+export type AppConfig = typeof config;

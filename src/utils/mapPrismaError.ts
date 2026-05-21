@@ -8,9 +8,6 @@ type PrismaMeta = {
   cause?: string;
 };
 
-/**
- * PrismaClientKnownRequestError duck-typing — avoids tight import from generated runtime.
- */
 function isPrismaKnownError(
   err: unknown,
 ): err is { code: string; meta?: PrismaMeta; message: string; name: string } {
@@ -29,9 +26,7 @@ function targetLabel(meta?: PrismaMeta): string {
   return "resource";
 }
 
-/**
- * Maps Prisma known request errors to {@link ApiError}. Returns `null` if not a Prisma error.
- */
+
 export function mapPrismaErrorToApiError(err: unknown): ApiError | null {
   if (!isPrismaKnownError(err)) return null;
 

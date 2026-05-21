@@ -31,7 +31,24 @@ export const auth = betterAuth({
   trustedOrigins: [config.clientUrl, baseURL],
   database: prismaAdapter(prisma, {
     provider: "postgresql",
+    transaction: false,
   }),
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (user) => {
+          const { ensureUserBootstrapped } = await import(
+            "../services/user/bootstrapUser"
+          );
+          await ensureUserBootstrapped({
+            id: user.id,
+            email: user.email,
+            name: user.name ?? user.email,
+          });
+        },
+      },
+    },
+  },
   user: {
     modelName: "User",
     fields: {

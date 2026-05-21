@@ -4,9 +4,6 @@ import { ApiError } from "../app/errors/ApiError";
 
 import { formatZodErrorMessage } from "./zodFormat";
 
-/**
- * If `err` is a {@link ZodError}, returns a 400 {@link ApiError} with issues in `details`.
- */
 export function mapZodErrorToApiError(err: unknown): ApiError | null {
   if (!(err instanceof ZodError)) return null;
 

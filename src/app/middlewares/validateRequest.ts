@@ -12,9 +12,6 @@ type SchemaShape = {
   cookies?: ZodTypeAny;
 };
 
-/**
- * Validates `body`, `query`, `params`, or `cookies` with Zod and assigns parsed values.
- */
 export function validateRequest(schemas: SchemaShape): RequestHandler {
   return catchAsync(async (req, _res, next) => {
     try {

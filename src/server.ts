@@ -5,6 +5,8 @@ import { config } from "./app/config";
 import { prisma } from "./app/shared/prisma";
 import { logger } from "./app/shared/logger";
 
+const SHUTDOWN_MS = 10_000;
+
 const server = app.listen(config.port, () => {
   logger.info(
     `Server running on http://localhost:${config.port} [${config.nodeEnv}]`,
@@ -13,8 +15,18 @@ const server = app.listen(config.port, () => {
 
 const shutdown = (signal: string) => {
   logger.info(`${signal} received. Shutting down...`);
+  const force = setTimeout(() => {
+    logger.error("Forced exit after shutdown timeout");
+    process.exit(1);
+  }, SHUTDOWN_MS);
+
   server.close(async () => {
-    await prisma.$disconnect();
+    clearTimeout(force);
+    try {
+      await prisma.$disconnect();
+    } catch (e) {
+      logger.error(String(e));
+    }
     process.exit(0);
   });
 };
