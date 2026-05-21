@@ -40,12 +40,6 @@ export async function getMyBusiness(userId: string) {
 
   return business;
 }
-
-/* -------------------------------------------------------------------------- */
-/*                                  Update                                    */
-/* -------------------------------------------------------------------------- */
-
-/** Fields whose changes we want to capture in the audit trail. */
 const AUDITED_FIELDS = [
   "currency",
   "taxRate",
@@ -181,15 +175,6 @@ export async function updateMyBusiness(
   return updated;
 }
 
-/* -------------------------------------------------------------------------- */
-/*                                Branding preview                            */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Minimal payload the frontend needs to render an invoice preview / PDF —
- * carved out so the heavier `/business` response doesn't have to be re-fetched
- * every time the user previews an invoice template.
- */
 export async function getBrandingPreview(userId: string) {
   const business = await getMyBusiness(userId);
   return {
@@ -203,9 +188,6 @@ export async function getBrandingPreview(userId: string) {
   };
 }
 
-/* -------------------------------------------------------------------------- */
-/*                                Currencies                                  */
-/* -------------------------------------------------------------------------- */
 
 export function listSupportedCurrencies() {
   return SUPPORTED_CURRENCIES.map((c) => ({ ...c }));

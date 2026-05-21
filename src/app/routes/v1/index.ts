@@ -13,6 +13,7 @@ import { getPlanLimits } from "../../constants/plans";
 import { adminRouter } from "../../modules/admin";
 import { authRouter } from "../../modules/auth";
 import { businessRouter } from "../../modules/business";
+import { clientRouter } from "../../modules/client";
 import { billingRouter } from "./billing.routes";
 
 /**
@@ -42,6 +43,7 @@ protectedV1.get(
 );
 
 protectedV1.use("/business", businessRouter);
+protectedV1.use("/clients", clientRouter);
 protectedV1.use("/billing", billingRouter);
 
 v1Router.use(protectedV1);
