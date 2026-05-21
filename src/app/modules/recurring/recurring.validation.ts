@@ -78,3 +78,32 @@ export type UpdateRecurringStatusInput = z.infer<
 export type ListRecurringQuery = z.infer<
   typeof listRecurringQuerySchema
 >["query"];
+
+const runDateSchema = z
+  .union([z.string().datetime(), z.coerce.date()])
+  .transform((v) => new Date(v));
+
+export const runRecurringSchema = z.object({
+  params: cuidParamSchema,
+  body: z
+    .object({
+      issueDate: runDateSchema.optional(),
+      dueDate: runDateSchema.optional(),
+    })
+    .default({})
+    .superRefine((data, ctx) => {
+      if (
+        data.issueDate &&
+        data.dueDate &&
+        data.dueDate.getTime() < data.issueDate.getTime()
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Due date cannot be before the issue date",
+          path: ["dueDate"],
+        });
+      }
+    }),
+});
+
+export type RunRecurringInput = z.infer<typeof runRecurringSchema>["body"];

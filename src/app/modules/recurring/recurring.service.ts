@@ -12,7 +12,9 @@ import {
 } from "../../services/billing/planUsage.service";
 import { writeAuditLog } from "../../services/audit/auditLog.service";
 import { getRequestIp } from "../auth/auth.helpers";
-import { assertClientBillable } from "../invoice/invoice.helpers";
+import { assertClientBillable, createInvoiceFromTemplateInTransaction } from "../invoice/invoice.helpers";
+import { getInvoiceDetail } from "../invoice/invoice.service";
+import { getMyBusiness } from "../business/business.service";
 
 import {
   RECURRING_DUE_SOON_DAYS,
@@ -22,16 +24,37 @@ import {
 } from "./recurring.constants";
 import {
   assertNoLinkedInvoices,
-  computeNextRunAt,
   enrichSchedule,
   findOwnedSchedule,
+  findRecurringTemplateInvoice,
+  markScheduleRunInTransaction,
 } from "./recurring.helpers";
 import type {
   CreateRecurringInput,
   ListRecurringQuery,
+  RunRecurringInput,
   UpdateRecurringInput,
   UpdateRecurringStatusInput,
 } from "./recurring.validation";
+
+function resolveDueDate(
+  issueDate: Date,
+  dueDate: Date | undefined,
+  defaultDueDays: number,
+): Date {
+  if (dueDate) return dueDate;
+  const resolved = new Date(issueDate);
+  resolved.setDate(resolved.getDate() + defaultDueDays);
+  return resolved;
+}
+
+function assertDateOrder(issueDate: Date, dueDate: Date): void {
+  if (dueDate.getTime() < issueDate.getTime()) {
+    throw new ApiError(409, "Due date cannot be before the issue date", {
+      code: "INVALID_DUE_DATE",
+    });
+  }
+}
 
 /* -------------------------------------------------------------------------- */
 /*                                   Create                                   */
@@ -175,6 +198,94 @@ export function getRecurringMeta() {
     frequencies: RECURRING_FREQUENCIES,
     dueSoonDays: RECURRING_DUE_SOON_DAYS,
     sortFields: ["createdAt", "nextRunAt", "updatedAt"] as const,
+    requiresTemplateInvoice: true,
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/*                              Generate invoice                              */
+/* -------------------------------------------------------------------------- */
+
+export async function runRecurringSchedule(
+  req: Request,
+  userId: string,
+  scheduleId: string,
+  input: RunRecurringInput = {},
+) {
+  const schedule = await findOwnedSchedule(userId, scheduleId);
+
+  if (!schedule.isActive) {
+    throw new ApiError(409, "Recurring schedule is inactive", {
+      code: "RECURRING_INACTIVE",
+    });
+  }
+
+  if (schedule.client.deletedAt || !schedule.client.isActive) {
+    throw new ApiError(409, "Cannot run a schedule for an inactive client", {
+      code: "CLIENT_NOT_BILLABLE",
+    });
+  }
+
+  await assertWithinPlanLimits(userId, "invoices");
+  await assertClientBillable(userId, schedule.clientId);
+
+  const template = await findRecurringTemplateInvoice(userId, scheduleId);
+  const business = await getMyBusiness(userId);
+  const issueDate = input.issueDate ?? new Date();
+  const dueDate = resolveDueDate(
+    issueDate,
+    input.dueDate,
+    business.defaultDueDays,
+  );
+  assertDateOrder(issueDate, dueDate);
+
+  const runAt = new Date();
+  const created = await prisma.$transaction(async (tx) => {
+    const invoice = await createInvoiceFromTemplateInTransaction(
+      tx,
+      userId,
+      template,
+      {
+        clientId: schedule.clientId,
+        issueDate,
+        dueDate,
+        recurringId: scheduleId,
+        isRecurring: true,
+      },
+    );
+
+    await markScheduleRunInTransaction(tx, scheduleId, runAt);
+    return invoice;
+  });
+
+  const [invoice, updatedSchedule] = await Promise.all([
+    getInvoiceDetail(userId, created.id),
+    prisma.recurringSchedule.findUnique({
+      where: { id: scheduleId },
+      select: RECURRING_LIST_SELECT,
+    }),
+  ]);
+
+  await writeAuditLog({
+    userId,
+    action: "recurring.run",
+    invoiceId: created.id,
+    metadata: {
+      scheduleId,
+      templateInvoiceId: template.id,
+      invoiceNumber: created.number,
+      nextRunAt: updatedSchedule?.nextRunAt.toISOString(),
+    },
+    ipAddress: getRequestIp(req),
+    userAgent: req.get("user-agent") ?? undefined,
+  });
+
+  return {
+    invoice,
+    schedule: updatedSchedule
+      ? enrichSchedule(updatedSchedule)
+      : enrichSchedule(schedule),
+    templateInvoiceId: template.id,
   };
 }
 
@@ -317,17 +428,7 @@ export async function markScheduleRun(
   scheduleId: string,
   runAt: Date = new Date(),
 ): Promise<void> {
-  const schedule = await prisma.recurringSchedule.findUnique({
-    where: { id: scheduleId },
-    select: { frequency: true, isActive: true },
-  });
-  if (!schedule?.isActive) return;
-
-  await prisma.recurringSchedule.update({
-    where: { id: scheduleId },
-    data: {
-      lastRunAt: runAt,
-      nextRunAt: computeNextRunAt(runAt, schedule.frequency),
-    },
+  await prisma.$transaction(async (tx) => {
+    await markScheduleRunInTransaction(tx, scheduleId, runAt);
   });
 }

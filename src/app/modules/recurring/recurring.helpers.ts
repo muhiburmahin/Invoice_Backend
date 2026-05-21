@@ -5,7 +5,7 @@ import {
   startOfDay,
 } from "date-fns";
 
-import type { RecurringFrequency } from "../../../generated/prisma/client";
+import type { RecurringFrequency, Prisma } from "../../../generated/prisma/client";
 import { ApiError } from "../../errors/ApiError";
 import { prisma } from "../../shared/prisma";
 
@@ -106,4 +106,73 @@ export async function assertNoLinkedInvoices(scheduleId: string): Promise<void> 
       },
     );
   }
+}
+
+export async function assertRecurringScheduleLink(
+  userId: string,
+  scheduleId: string,
+  clientId: string,
+): Promise<void> {
+  const schedule = await prisma.recurringSchedule.findFirst({
+    where: { id: scheduleId, userId },
+    select: { clientId: true },
+  });
+
+  if (!schedule) {
+    throw new ApiError(404, "Recurring schedule not found", {
+      code: "RECURRING_NOT_FOUND",
+    });
+  }
+
+  if (schedule.clientId !== clientId) {
+    throw new ApiError(
+      409,
+      "Invoice client must match the recurring schedule client",
+      {
+        code: "RECURRING_CLIENT_MISMATCH",
+        details: { scheduleClientId: schedule.clientId, clientId },
+      },
+    );
+  }
+}
+
+export async function findRecurringTemplateInvoice(
+  userId: string,
+  scheduleId: string,
+) {
+  const template = await prisma.invoice.findFirst({
+    where: { recurringId: scheduleId, userId, deletedAt: null },
+    orderBy: { createdAt: "desc" },
+    include: { items: { orderBy: { order: "asc" } } },
+  });
+
+  if (!template) {
+    throw new ApiError(
+      409,
+      "No template invoice found for this schedule. Create an invoice linked to this schedule first.",
+      { code: "RECURRING_NO_TEMPLATE" },
+    );
+  }
+
+  return template;
+}
+
+export async function markScheduleRunInTransaction(
+  tx: Prisma.TransactionClient,
+  scheduleId: string,
+  runAt: Date = new Date(),
+): Promise<void> {
+  const schedule = await tx.recurringSchedule.findUnique({
+    where: { id: scheduleId },
+    select: { frequency: true, isActive: true },
+  });
+  if (!schedule?.isActive) return;
+
+  await tx.recurringSchedule.update({
+    where: { id: scheduleId },
+    data: {
+      lastRunAt: runAt,
+      nextRunAt: computeNextRunAt(runAt, schedule.frequency),
+    },
+  });
 }

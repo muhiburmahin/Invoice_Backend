@@ -33,9 +33,11 @@ import {
   assertSendableInvoice,
   assertStatusTransition,
   calculateTotals,
+  createInvoiceFromTemplateInTransaction,
   findOwnedInvoice,
   roundMoney,
 } from "./invoice.helpers";
+import { assertRecurringScheduleLink } from "../recurring/recurring.helpers";
 import type {
   CreateInvoiceInput,
   ListInvoicesQuery,
@@ -131,6 +133,9 @@ export async function createInvoice(
 ) {
   await assertWithinPlanLimits(userId, "invoices");
   await assertClientBillable(userId, input.clientId);
+  if (input.recurringId) {
+    await assertRecurringScheduleLink(userId, input.recurringId, input.clientId);
+  }
 
   const business = await getMyBusiness(userId);
   const taxRate = input.taxRate ?? business.taxRate;
@@ -175,6 +180,8 @@ export async function createInvoice(
         notes: normaliseNullable(input.notes),
         terms: normaliseNullable(input.terms) ?? business.defaultTerms,
         footer: normaliseNullable(input.footer),
+        isRecurring: Boolean(input.recurringId),
+        recurringId: input.recurringId ?? null,
         items: {
           create: computed.items,
         },
@@ -187,7 +194,11 @@ export async function createInvoice(
     userId,
     action: "invoice.create",
     invoiceId: invoice.id,
-    metadata: { number: invoice.number, clientId: input.clientId },
+    metadata: {
+      number: invoice.number,
+      clientId: input.clientId,
+      recurringId: input.recurringId ?? null,
+    },
     ipAddress: getRequestIp(req),
     userAgent: req.get("user-agent") ?? undefined,
   });
@@ -227,6 +238,7 @@ export async function listInvoices(userId: string, query: ListInvoicesQuery) {
     where.status = query.status;
   }
   if (query.clientId) where.clientId = query.clientId;
+  if (query.recurringId) where.recurringId = query.recurringId;
   if (query.fromDate || query.toDate) {
     where.issueDate = {};
     if (query.fromDate) where.issueDate.gte = query.fromDate;
@@ -509,53 +521,17 @@ export async function duplicateInvoice(
   await assertClientBillable(userId, source.clientId);
 
   const business = await getMyBusiness(userId);
+  const issueDate = new Date();
   const dueDate = new Date();
   dueDate.setDate(dueDate.getDate() + business.defaultDueDays);
 
-  const items = source.items.map((item) => ({
-    description: item.description,
-    quantity: item.quantity,
-    rate: item.rate,
-    unit: item.unit,
-    taxable: item.taxable,
-    order: item.order,
-  }));
-
-  const computed = calculateTotals({
-    items,
-    taxRate: source.taxRate,
-    discount: source.discount,
-    discountType: source.discountType,
-  });
-
-  const invoice = await prisma.$transaction(async (tx) => {
-    const number = await allocateInvoiceNumber(tx, userId);
-
-    return tx.invoice.create({
-      data: {
-        userId,
-        clientId: source.clientId,
-        number,
-        status: "DRAFT",
-        issueDate: new Date(),
-        dueDate,
-        subtotal: computed.subtotal,
-        taxRate: source.taxRate,
-        taxAmount: computed.taxAmount,
-        discount: source.discount,
-        discountType: source.discountType,
-        total: computed.total,
-        paidAmount: 0,
-        balanceDue: computed.total,
-        currency: source.currency,
-        notes: source.notes,
-        terms: source.terms,
-        footer: source.footer,
-        items: { create: computed.items },
-      },
-      select: INVOICE_LIST_SELECT,
-    });
-  });
+  const invoice = await prisma.$transaction(async (tx) =>
+    createInvoiceFromTemplateInTransaction(tx, userId, source, {
+      clientId: source.clientId,
+      issueDate,
+      dueDate,
+    }),
+  );
 
   await writeAuditLog({
     userId,

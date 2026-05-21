@@ -80,6 +80,10 @@ const invoiceCoreSchema = z.object({
   notes: optionalText(INVOICE_POLICY.notes.max, "Notes"),
   terms: optionalText(INVOICE_POLICY.terms.max, "Terms"),
   footer: optionalText(INVOICE_POLICY.footer.max, "Footer"),
+  recurringId: z
+    .string()
+    .cuid("Please select a valid recurring schedule")
+    .optional(),
   items: z
     .array(invoiceItemSchema)
     .min(
@@ -209,6 +213,7 @@ export const listInvoicesQuerySchema = z.object({
       .transform((v) => v === "true")
       .optional(),
     clientId: z.string().cuid().optional(),
+    recurringId: z.string().cuid().optional(),
     fromDate: z
       .union([z.string().datetime(), z.coerce.date()])
       .optional()

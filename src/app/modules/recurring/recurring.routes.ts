@@ -11,6 +11,7 @@ import {
   listScheduleInvoicesHandler,
   recurringMetaHandler,
   recurringStatsHandler,
+  runRecurringHandler,
   updateRecurringHandler,
   updateRecurringStatusHandler,
 } from "./recurring.controller";
@@ -18,6 +19,7 @@ import {
   createRecurringSchema,
   listRecurringQuerySchema,
   recurringIdParamSchema,
+  runRecurringSchema,
   updateRecurringSchema,
   updateRecurringStatusSchema,
 } from "./recurring.validation";
@@ -56,6 +58,17 @@ recurringRouter.get(
   "/:id/invoices",
   validateRequest({ params: recurringIdParamSchema.shape.params }),
   listScheduleInvoicesHandler,
+);
+
+recurringRouter.post(
+  "/:id/run",
+  moderate,
+  loadSubscription,
+  validateRequest({
+    params: runRecurringSchema.shape.params,
+    body: runRecurringSchema.shape.body,
+  }),
+  runRecurringHandler,
 );
 
 recurringRouter.get(

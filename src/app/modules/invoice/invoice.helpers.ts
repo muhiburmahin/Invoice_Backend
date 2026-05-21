@@ -10,6 +10,7 @@ import {
   ALLOWED_STATUS_TRANSITIONS,
   DELETABLE_STATUSES,
   EDITABLE_STATUSES,
+  INVOICE_LIST_SELECT,
 } from "./invoice.constants";
 
 export type LineItemInput = {
@@ -224,4 +225,81 @@ export async function assertClientBillable(
       code: "CLIENT_NOT_BILLABLE",
     });
   }
+}
+
+export type InvoiceTemplateSource = {
+  taxRate: number;
+  discount: number;
+  discountType: DiscountType;
+  currency: string;
+  notes: string | null;
+  terms: string | null;
+  footer: string | null;
+  items: Array<{
+    description: string;
+    quantity: number;
+    rate: number;
+    unit: string | null;
+    taxable: boolean;
+    order: number;
+  }>;
+};
+
+/** Clone line items and totals from a source invoice inside a transaction. */
+export async function createInvoiceFromTemplateInTransaction(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  source: InvoiceTemplateSource,
+  options: {
+    clientId: string;
+    issueDate: Date;
+    dueDate: Date;
+    recurringId?: string | null;
+    isRecurring?: boolean;
+  },
+) {
+  const items = source.items.map((item) => ({
+    description: item.description,
+    quantity: item.quantity,
+    rate: item.rate,
+    unit: item.unit,
+    taxable: item.taxable,
+    order: item.order,
+  }));
+
+  const computed = calculateTotals({
+    items,
+    taxRate: source.taxRate,
+    discount: source.discount,
+    discountType: source.discountType,
+  });
+
+  const number = await allocateInvoiceNumber(tx, userId);
+
+  return tx.invoice.create({
+    data: {
+      userId,
+      clientId: options.clientId,
+      number,
+      status: "DRAFT",
+      issueDate: options.issueDate,
+      dueDate: options.dueDate,
+      subtotal: computed.subtotal,
+      taxRate: source.taxRate,
+      taxAmount: computed.taxAmount,
+      discount: source.discount,
+      discountType: source.discountType,
+      total: computed.total,
+      paidAmount: 0,
+      balanceDue: computed.total,
+      currency: source.currency,
+      notes: source.notes,
+      terms: source.terms,
+      footer: source.footer,
+      isRecurring: options.isRecurring ?? false,
+      recurringId: options.recurringId ?? null,
+      items: { create: computed.items },
+    },
+    select: INVOICE_LIST_SELECT,
+  });
 }

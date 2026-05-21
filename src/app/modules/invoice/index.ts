@@ -12,6 +12,7 @@ export {
   allocateInvoiceNumber,
   assertSendableInvoice,
   calculateTotals,
+  createInvoiceFromTemplateInTransaction,
   findOwnedInvoice,
 } from "./invoice.helpers";
 export {

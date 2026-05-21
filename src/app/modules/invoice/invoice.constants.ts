@@ -64,6 +64,8 @@ export const INVOICE_LIST_SELECT = {
   currency: true,
   sentAt: true,
   viewedAt: true,
+  isRecurring: true,
+  recurringId: true,
   createdAt: true,
   updatedAt: true,
   client: {

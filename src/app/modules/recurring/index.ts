@@ -6,9 +6,13 @@ export {
   RECURRING_ROUTES,
 } from "./recurring.constants";
 export {
+  assertNoLinkedInvoices,
+  assertRecurringScheduleLink,
   computeNextRunAt,
   enrichSchedule,
   findOwnedSchedule,
+  findRecurringTemplateInvoice,
+  markScheduleRunInTransaction,
 } from "./recurring.helpers";
 export { recurringRouter } from "./recurring.routes";
 export {
@@ -20,13 +24,16 @@ export {
   listRecurringSchedules,
   listScheduleInvoices,
   markScheduleRun,
+  runRecurringSchedule,
   updateRecurringSchedule,
   updateRecurringStatus,
 } from "./recurring.service";
 export {
   createRecurringSchema,
   listRecurringQuerySchema,
+  runRecurringSchema,
   updateRecurringSchema,
   type CreateRecurringInput,
   type ListRecurringQuery,
+  type RunRecurringInput,
 } from "./recurring.validation";

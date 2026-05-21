@@ -7,6 +7,7 @@ export const RECURRING_ROUTES = {
   byId: "/:id",
   status: "/:id/status",
   invoices: "/:id/invoices",
+  run: "/:id/run",
 } as const;
 
 export const RECURRING_FREQUENCIES = [

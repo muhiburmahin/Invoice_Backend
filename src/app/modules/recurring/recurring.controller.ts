@@ -12,6 +12,7 @@ import {
   getRecurringStats,
   listRecurringSchedules,
   listScheduleInvoices,
+  runRecurringSchedule,
   updateRecurringSchedule,
   updateRecurringStatus,
 } from "./recurring.service";
@@ -61,6 +62,19 @@ export const createRecurringHandler: RequestHandler = catchAsync(async (req, res
     { schedule, message: "Recurring schedule created successfully" },
     201,
   );
+});
+
+export const runRecurringHandler: RequestHandler = catchAsync(async (req, res) => {
+  const data = await runRecurringSchedule(
+    req,
+    getUserId(req),
+    getParamId(req),
+    req.body,
+  );
+  sendSuccess(res, {
+    ...data,
+    message: "Recurring invoice generated successfully",
+  }, 201);
 });
 
 export const getRecurringHandler: RequestHandler = catchAsync(async (req, res) => {
