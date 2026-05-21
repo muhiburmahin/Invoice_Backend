@@ -4,6 +4,7 @@ import app from "./app";
 import { config } from "./app/config";
 import { prisma } from "./app/shared/prisma";
 import { logger } from "./app/shared/logger";
+import { startScheduledJobs, stopScheduledJobs } from "./app/services/jobs";
 
 const SHUTDOWN_MS = 10_000;
 
@@ -11,10 +12,12 @@ const server = app.listen(config.port, () => {
   logger.info(
     `Server running on http://localhost:${config.port} [${config.nodeEnv}]`,
   );
+  startScheduledJobs();
 });
 
 const shutdown = (signal: string) => {
   logger.info(`${signal} received. Shutting down...`);
+  stopScheduledJobs();
   const force = setTimeout(() => {
     logger.error("Forced exit after shutdown timeout");
     process.exit(1);

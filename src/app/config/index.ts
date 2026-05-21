@@ -70,7 +70,10 @@ export const config = {
   features: {
     billing: Boolean(env.FEATURE_BILLING),
     auditLog: Boolean(env.FEATURE_AUDIT_LOG),
+    scheduledJobs: Boolean(env.FEATURE_SCHEDULED_JOBS),
   },
+
+  scheduledJobsIntervalMs: env.SCHEDULED_JOBS_INTERVAL_MS,
 } as const;
 
 export type AppConfig = typeof config;

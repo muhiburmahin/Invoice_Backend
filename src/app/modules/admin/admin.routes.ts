@@ -13,6 +13,7 @@ import {
   deleteUserHandler,
   getUserDetailHandler,
   listUsersHandler,
+  runScheduledJobsHandler,
   statsHandler,
   triggerResetHandler,
   updateUserPlanHandler,
@@ -22,6 +23,7 @@ import {
 import {
   activityLogsQuerySchema,
   listUsersQuerySchema,
+  runScheduledJobsSchema,
   updateUserPlanSchema,
   updateUserRoleSchema,
   updateUserStatusSchema,
@@ -104,6 +106,13 @@ adminRouter.delete(
   requireRole("SUPER_ADMIN"),
   validateRequest({ params: userIdParamSchema.shape.params }),
   deleteUserHandler,
+);
+
+adminRouter.post(
+  "/jobs/run",
+  requireRole("SUPER_ADMIN"),
+  validateRequest({ body: runScheduledJobsSchema.shape.body }),
+  runScheduledJobsHandler,
 );
 
 export { adminRouter };

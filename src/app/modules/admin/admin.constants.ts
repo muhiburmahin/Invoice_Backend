@@ -8,6 +8,7 @@ export const ADMIN_ROUTES = {
   resetUserPassword: "/users/:id/reset-password",
   stats: "/stats",
   activityLogs: "/activity-logs",
+  runJobs: "/jobs/run",
 } as const;
 
 /**
@@ -24,4 +25,5 @@ export const SUPPORT_CAPABILITIES = {
   updateUserRole: false,
   updateUserPlan: false,
   deleteUser: false,
+  runScheduledJobs: false,
 } as const;

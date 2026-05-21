@@ -4,4 +4,5 @@ import { config } from "./index";
 export const features = {
   isBillingEnabled: () => config.features.billing,
   isAuditLogEnabled: () => config.features.auditLog,
+  isScheduledJobsEnabled: () => config.features.scheduledJobs,
 } as const;

@@ -12,6 +12,7 @@ import { prisma } from "../../shared/prisma";
 import { logger } from "../../shared/logger";
 import { auth } from "../../lib/auth";
 import { writeAuditLog } from "../../services/audit/auditLog.service";
+import { runScheduledJobs, SCHEDULED_JOB_NAMES } from "../../services/jobs";
 import { notifySubscriptionCancelled } from "../../services/notification";
 import { getRequestIp } from "../auth/auth.helpers";
 
@@ -22,6 +23,7 @@ import type {
   UpdateUserPlanInput,
   UpdateUserRoleInput,
   UpdateUserStatusInput,
+  RunScheduledJobsInput,
 } from "./admin.validation";
 
 /* -------------------------------------------------------------------------- */
@@ -648,4 +650,37 @@ export async function listActivityLogs(
       hasPrevPage: query.page > 1,
     },
   };
+}
+
+/* -------------------------------------------------------------------------- */
+/*                           Scheduled background jobs                        */
+/* -------------------------------------------------------------------------- */
+
+export async function runAdminScheduledJobs(
+  req: Request,
+  actorId: string,
+  actorRole: UserRole,
+  input: RunScheduledJobsInput,
+) {
+  assertCapability(actorRole, "runScheduledJobs");
+
+  const result = await runScheduledJobs({ jobs: input.jobs });
+
+  await writeAuditLog({
+    userId: actorId,
+    action: "admin.jobs.run",
+    metadata: {
+      jobs: input.jobs ?? [...SCHEDULED_JOB_NAMES],
+      durationMs: result.durationMs,
+      summary: result.jobs.map((job) => ({
+        name: job.name,
+        durationMs: job.durationMs,
+        result: job.result,
+      })),
+    } as Prisma.InputJsonValue,
+    ipAddress: getRequestIp(req),
+    userAgent: req.get("user-agent") ?? undefined,
+  });
+
+  return result;
 }

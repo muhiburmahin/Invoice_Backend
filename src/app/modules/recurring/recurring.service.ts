@@ -206,11 +206,15 @@ export function getRecurringMeta() {
 /*                              Generate invoice                              */
 /* -------------------------------------------------------------------------- */
 
-export async function runRecurringSchedule(
-  req: Request,
+export async function executeRecurringScheduleRun(
   userId: string,
   scheduleId: string,
   input: RunRecurringInput = {},
+  options?: {
+    source?: "manual" | "scheduler";
+    ipAddress?: string;
+    userAgent?: string;
+  },
 ) {
   const schedule = await findOwnedSchedule(userId, scheduleId);
 
@@ -258,13 +262,10 @@ export async function runRecurringSchedule(
     return invoice;
   });
 
-  const [invoice, updatedSchedule] = await Promise.all([
-    getInvoiceDetail(userId, created.id),
-    prisma.recurringSchedule.findUnique({
-      where: { id: scheduleId },
-      select: RECURRING_LIST_SELECT,
-    }),
-  ]);
+  const updatedSchedule = await prisma.recurringSchedule.findUnique({
+    where: { id: scheduleId },
+    select: RECURRING_LIST_SELECT,
+  });
 
   await writeAuditLog({
     userId,
@@ -275,17 +276,94 @@ export async function runRecurringSchedule(
       templateInvoiceId: template.id,
       invoiceNumber: created.number,
       nextRunAt: updatedSchedule?.nextRunAt.toISOString(),
+      source: options?.source ?? "manual",
     },
-    ipAddress: getRequestIp(req),
-    userAgent: req.get("user-agent") ?? undefined,
+    ipAddress: options?.ipAddress,
+    userAgent: options?.userAgent,
   });
 
   return {
-    invoice,
+    invoice: created,
     schedule: updatedSchedule
       ? enrichSchedule(updatedSchedule)
       : enrichSchedule(schedule),
     templateInvoiceId: template.id,
+  };
+}
+
+export async function runRecurringSchedule(
+  req: Request,
+  userId: string,
+  scheduleId: string,
+  input: RunRecurringInput = {},
+) {
+  const result = await executeRecurringScheduleRun(
+    userId,
+    scheduleId,
+    input,
+    {
+      source: "manual",
+      ipAddress: getRequestIp(req),
+      userAgent: req.get("user-agent") ?? undefined,
+    },
+  );
+
+  const invoice = await getInvoiceDetail(userId, result.invoice.id);
+
+  return {
+    invoice,
+    schedule: result.schedule,
+    templateInvoiceId: result.templateInvoiceId,
+  };
+}
+
+/** Run all active schedules whose nextRunAt is due. Intended for cron/worker. */
+export async function processDueRecurringSchedules(options?: {
+  limit?: number;
+}): Promise<{
+  processed: number;
+  succeeded: number;
+  failed: number;
+  errors: Array<{ scheduleId: string; userId: string; message: string }>;
+}> {
+  const now = new Date();
+  const limit = options?.limit ?? 50;
+
+  const dueSchedules = await prisma.recurringSchedule.findMany({
+    where: {
+      isActive: true,
+      nextRunAt: { lte: now },
+      client: { deletedAt: null, isActive: true },
+    },
+    select: { id: true, userId: true },
+    orderBy: { nextRunAt: "asc" },
+    take: limit,
+  });
+
+  const errors: Array<{ scheduleId: string; userId: string; message: string }> =
+    [];
+  let succeeded = 0;
+
+  for (const schedule of dueSchedules) {
+    try {
+      await executeRecurringScheduleRun(schedule.userId, schedule.id, {}, {
+        source: "scheduler",
+      });
+      succeeded += 1;
+    } catch (error) {
+      errors.push({
+        scheduleId: schedule.id,
+        userId: schedule.userId,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  return {
+    processed: dueSchedules.length,
+    succeeded,
+    failed: errors.length,
+    errors,
   };
 }
 

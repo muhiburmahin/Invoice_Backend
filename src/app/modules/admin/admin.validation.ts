@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { SCHEDULED_JOB_NAMES } from "../../services/jobs";
+
 const userIdParam = z.object({
   id: z.string({ message: "User id is required" }).min(1, "User id is required"),
 });
@@ -108,6 +110,18 @@ export const activityLogsQuerySchema = z.object({
   }),
 });
 
+export const runScheduledJobsSchema = z.object({
+  body: z.object({
+    jobs: z
+      .array(
+        z.enum(SCHEDULED_JOB_NAMES, {
+          message: `jobs must be one or more of: ${SCHEDULED_JOB_NAMES.join(", ")}`,
+        }),
+      )
+      .optional(),
+  }),
+});
+
 export type ListUsersQuery = z.infer<typeof listUsersQuerySchema>["query"];
 export type UpdateUserStatusInput = z.infer<
   typeof updateUserStatusSchema
@@ -117,3 +131,6 @@ export type UpdateUserPlanInput = z.infer<typeof updateUserPlanSchema>["body"];
 export type ActivityLogsQuery = z.infer<
   typeof activityLogsQuerySchema
 >["query"];
+export type RunScheduledJobsInput = z.infer<
+  typeof runScheduledJobsSchema
+>["body"];

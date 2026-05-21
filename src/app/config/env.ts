@@ -66,6 +66,16 @@ const envSchema = z
       .string()
       .optional()
       .transform((v) => v === "true" || v === "1"),
+    FEATURE_SCHEDULED_JOBS: z
+      .string()
+      .optional()
+      .transform((v) => v === "true" || v === "1"),
+    /** Interval between scheduled job runs (ms). Default: 1 hour. */
+    SCHEDULED_JOBS_INTERVAL_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(3_600_000),
 
     SUPER_ADMIN_EMAIL: z.string().email().optional(),
   })

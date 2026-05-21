@@ -10,6 +10,7 @@ import {
   getUserDetail,
   listActivityLogs,
   listUsers,
+  runAdminScheduledJobs,
   triggerPasswordReset,
   updateUserPlan,
   updateUserRole,
@@ -125,3 +126,19 @@ export const activityLogsHandler: RequestHandler = catchAsync(async (req, res) =
   );
   sendSuccess(res, { logs: rows }, 200, meta);
 });
+
+export const runScheduledJobsHandler: RequestHandler = catchAsync(
+  async (req, res) => {
+    const actor = getActor(req);
+    const result = await runAdminScheduledJobs(
+      req,
+      actor.id,
+      actor.role,
+      req.body,
+    );
+    sendSuccess(res, {
+      result,
+      message: "Scheduled jobs completed successfully",
+    });
+  },
+);
