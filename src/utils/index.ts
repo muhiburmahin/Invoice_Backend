@@ -1,4 +1,9 @@
 export { generateErrorRef } from "./errorRef";
-export { formatZodErrorMessage } from "./zodFormat";
+export {
+  buildFieldErrorList,
+  buildFieldErrors,
+  formatZodErrorMessage,
+  type FieldErrors,
+} from "./zodFormat";
 export { mapPrismaErrorToApiError } from "./mapPrismaError";
 export { mapZodErrorToApiError } from "./mapZodError";

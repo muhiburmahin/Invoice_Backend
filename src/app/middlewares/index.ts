@@ -7,6 +7,7 @@ export { notFound } from "./notFound";
 export { requestId } from "./requestId";
 export { requireActiveUser } from "./requireActiveUser";
 export { requirePlan } from "./requirePlan";
+export { requireRole, isSuperAdmin, isStaff } from "./requireRole";
 export { validateRequest } from "./validateRequest";
 export { requestTimeout } from "./timeout";
 export { workspaceContext } from "./workspaceContext";

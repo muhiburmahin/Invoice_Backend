@@ -3,7 +3,11 @@ import { ZodError, type ZodTypeAny } from "zod";
 
 import { ApiError } from "../errors/ApiError";
 import { catchAsync } from "../shared/catchAsync";
-import { formatZodErrorMessage } from "../../utils/zodFormat";
+import {
+  buildFieldErrorList,
+  buildFieldErrors,
+  formatZodErrorMessage,
+} from "../../utils/zodFormat";
 
 type SchemaShape = {
   body?: ZodTypeAny;
@@ -42,7 +46,11 @@ export function validateRequest(schemas: SchemaShape): RequestHandler {
         next(
           new ApiError(400, formatZodErrorMessage(e), {
             code: "VALIDATION_ERROR",
-            details: { issues: e.issues },
+            details: {
+              issues: e.issues,
+              fieldErrors: buildFieldErrors(e),
+              errors: buildFieldErrorList(e),
+            },
           }),
         );
         return;

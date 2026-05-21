@@ -10,12 +10,19 @@ import {
 import { catchAsync } from "../../shared/catchAsync";
 import { sendSuccess } from "../../shared/sendResponse";
 import { getPlanLimits } from "../../constants/plans";
+import { adminRouter } from "../../modules/admin";
+import { authRouter } from "../../modules/auth";
 import { billingRouter } from "./billing.routes";
 
 /**
- * Versioned product API (`/api/v1/...`). Add module routers under `protectedV1`.
+ * Versioned product API (`/api/v1/...`).
+ *  - Public + mixed routes (e.g. `/auth/*`) mount directly on `v1Router`.
+ *  - Authenticated product routes mount under `protectedV1`.
  */
 const v1Router = Router();
+
+v1Router.use("/auth", authRouter);
+v1Router.use("/admin", adminRouter);
 
 const protectedV1 = Router();
 protectedV1.use(requireAuth, requireActiveUser, bootstrapUser, assertWorkspace);

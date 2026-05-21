@@ -1,5 +1,5 @@
 import type { AuthSessionPayload } from "../app/lib/auth-session";
-import type { Subscription } from "../generated/prisma/client";
+import type { Subscription, UserRole } from "../generated/prisma/client";
 
 declare global {
   namespace Express {
@@ -12,6 +12,8 @@ declare global {
       subscription?: Subscription;
       /** Optional SaaS workspace / org id (`X-Workspace-Id`) */
       workspaceId?: string;
+      /** Resolved by {@link requireRole} — the user's database role */
+      userRole?: UserRole;
     }
   }
 }

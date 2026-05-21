@@ -66,6 +66,8 @@ const envSchema = z
       .string()
       .optional()
       .transform((v) => v === "true" || v === "1"),
+
+    SUPER_ADMIN_EMAIL: z.string().email().optional(),
   })
   .superRefine((val, ctx) => {
     if (val.NODE_ENV === "production") {
