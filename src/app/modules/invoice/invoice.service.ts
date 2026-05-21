@@ -15,6 +15,7 @@ import {
 } from "../../services/billing/planUsage.service";
 import { getPlanLimits } from "../../constants/plans";
 import { writeAuditLog } from "../../services/audit/auditLog.service";
+import { notifyReminderSent } from "../../services/notification";
 import { sendInvoiceEmail } from "../../services/email/invoiceMail.service";
 import { isEmailConfigured } from "../../services/email/smtp.service";
 import { getInvoicePdfAsset } from "../../services/pdf/invoicePdf.service";
@@ -514,6 +515,13 @@ export async function remindInvoice(
     },
     ipAddress: getRequestIp(req),
     userAgent: req.get("user-agent") ?? undefined,
+  });
+
+  await notifyReminderSent({
+    userId,
+    invoiceId,
+    invoiceNumber: current.number,
+    recipient,
   });
 
   return getInvoiceDetail(userId, invoiceId);

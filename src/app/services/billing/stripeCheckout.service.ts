@@ -6,6 +6,7 @@ import { config } from "../../config";
 import { features } from "../../config/features";
 import { prisma } from "../../shared/prisma";
 import { writeAuditLog } from "../audit/auditLog.service";
+import { notifyAfterPaymentComplete } from "../notification";
 import { roundMoney } from "../../modules/invoice/invoice.helpers";
 import {
   assertCanCompletePayment,
@@ -183,7 +184,9 @@ async function completeStripePayment(input: {
       invoiceId: true,
       amount: true,
       status: true,
-      invoice: { select: { userId: true, number: true } },
+      currency: true,
+      method: true,
+      invoice: { select: { userId: true, number: true, total: true } },
     },
   });
 
@@ -211,6 +214,14 @@ async function completeStripePayment(input: {
     await syncInvoiceFromPayments(tx, payment.invoiceId);
   });
 
+  const invoiceSnapshot = await prisma.invoice.findUnique({
+    where: { id: payment.invoiceId },
+    select: {
+      status: true,
+      total: true,
+    },
+  });
+
   await writeAuditLog({
     userId: payment.invoice.userId,
     action: "payment.stripe_complete",
@@ -222,6 +233,18 @@ async function completeStripePayment(input: {
       amount: payment.amount,
       invoiceNumber: payment.invoice.number,
     },
+  });
+
+  await notifyAfterPaymentComplete({
+    userId: payment.invoice.userId,
+    invoiceId: payment.invoiceId,
+    paymentId: payment.id,
+    amount: payment.amount,
+    currency: payment.currency,
+    method: payment.method,
+    invoiceNumber: payment.invoice.number,
+    invoiceStatus: invoiceSnapshot?.status,
+    invoiceTotal: invoiceSnapshot?.total ?? payment.invoice.total,
   });
 }
 

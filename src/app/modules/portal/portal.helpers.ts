@@ -2,6 +2,7 @@ import { ApiError } from "../../errors/ApiError";
 import { config } from "../../config";
 import { prisma } from "../../shared/prisma";
 import { writeAuditLog } from "../../services/audit/auditLog.service";
+import { notifyInvoiceViewed } from "../../services/notification";
 
 import {
   PORTAL_BUSINESS_SELECT,
@@ -87,6 +88,7 @@ export async function markInvoiceViewedFromPortal(input: {
   invoiceId: string;
   userId: string;
   clientId: string;
+  clientName: string;
   invoiceNumber: string;
   currentStatus: string;
   via: "portal" | "portal_pdf";
@@ -107,6 +109,14 @@ export async function markInvoiceViewedFromPortal(input: {
       number: input.invoiceNumber,
       via: input.via,
     },
+  });
+
+  await notifyInvoiceViewed({
+    userId: input.userId,
+    invoiceId: input.invoiceId,
+    invoiceNumber: input.invoiceNumber,
+    clientName: input.clientName,
+    via: input.via,
   });
 
   return true;

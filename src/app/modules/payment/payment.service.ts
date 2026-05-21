@@ -6,6 +6,7 @@ import { ApiError } from "../../errors/ApiError";
 import { prisma } from "../../shared/prisma";
 import { buildPaginationMeta } from "../../shared/pagination";
 import { writeAuditLog } from "../../services/audit/auditLog.service";
+import { notifyAfterPaymentComplete } from "../../services/notification";
 import { getRequestIp } from "../auth/auth.helpers";
 import { roundMoney } from "../invoice/invoice.helpers";
 
@@ -140,6 +141,20 @@ export async function recordPayment(
     ipAddress: getRequestIp(req),
     userAgent: req.get("user-agent") ?? undefined,
   });
+
+  if (status === "COMPLETED" && payment.invoice) {
+    await notifyAfterPaymentComplete({
+      userId,
+      invoiceId: input.invoiceId,
+      paymentId: payment.payment.id,
+      amount: payment.payment.amount,
+      currency: payment.payment.currency,
+      method: payment.payment.method,
+      invoiceNumber: payment.invoice.number,
+      invoiceStatus: payment.invoice.status,
+      invoiceTotal: payment.invoice.total,
+    });
+  }
 
   return payment;
 }
@@ -394,6 +409,20 @@ export async function updatePaymentStatus(
     ipAddress: getRequestIp(req),
     userAgent: req.get("user-agent") ?? undefined,
   });
+
+  if (input.status === "COMPLETED" && updated.invoice) {
+    await notifyAfterPaymentComplete({
+      userId,
+      invoiceId: current.invoiceId,
+      paymentId,
+      amount: current.amount,
+      currency: current.invoice.currency,
+      method: current.method,
+      invoiceNumber: updated.invoice.number,
+      invoiceStatus: updated.invoice.status,
+      invoiceTotal: updated.invoice.total,
+    });
+  }
 
   return {
     payment: updated.payment,

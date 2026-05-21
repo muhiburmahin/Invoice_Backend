@@ -12,6 +12,7 @@ import { prisma } from "../../shared/prisma";
 import { logger } from "../../shared/logger";
 import { auth } from "../../lib/auth";
 import { writeAuditLog } from "../../services/audit/auditLog.service";
+import { notifySubscriptionCancelled } from "../../services/notification";
 import { getRequestIp } from "../auth/auth.helpers";
 
 import { SUPPORT_CAPABILITIES } from "./admin.constants";
@@ -361,7 +362,16 @@ export async function updateUserPlan(
 
   const target = await prisma.user.findUnique({
     where: { id: targetId },
-    select: { id: true, deletedAt: true },
+    select: {
+      id: true,
+      deletedAt: true,
+      subscription: {
+        select: {
+          status: true,
+          cancelAtPeriodEnd: true,
+        },
+      },
+    },
   });
   if (!target) {
     throw new ApiError(404, "User not found", { code: "USER_NOT_FOUND" });
@@ -405,6 +415,21 @@ export async function updateUserPlan(
     ipAddress: getRequestIp(req),
     userAgent: req.get("user-agent") ?? undefined,
   });
+
+  const wasCancelled =
+    target.subscription?.status === "CANCELLED" ||
+    target.subscription?.cancelAtPeriodEnd === true;
+  const isCancelled =
+    subscription.status === "CANCELLED" || subscription.cancelAtPeriodEnd === true;
+
+  if (isCancelled && !wasCancelled) {
+    await notifySubscriptionCancelled({
+      userId: targetId,
+      plan: subscription.plan,
+      cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+      currentPeriodEnd: subscription.currentPeriodEnd,
+    });
+  }
 
   return subscription;
 }

@@ -18,6 +18,8 @@ import { invoiceRouter } from "../../modules/invoice";
 import { paymentRouter } from "../../modules/payment";
 import { portalRouter } from "../../modules/portal";
 import { recurringRouter } from "../../modules/recurring";
+import { notificationRouter } from "../../modules/notification";
+import { getUnreadNotificationCount } from "../../modules/notification/notification.service";
 import { billingRouter } from "./billing.routes";
 
 /**
@@ -38,11 +40,14 @@ protectedV1.get(
   "/me",
   loadSubscription,
   catchAsync(async (req, res) => {
+    const userId = req.auth!.user.id;
     const plan = req.subscription?.plan ?? "FREE";
+    const { unreadCount } = await getUnreadNotificationCount(userId);
     sendSuccess(res, {
       user: req.auth!.user,
       subscription: req.subscription ?? null,
       planLimits: getPlanLimits(plan),
+      unreadNotificationCount: unreadCount,
     });
   }),
 );
@@ -52,6 +57,7 @@ protectedV1.use("/clients", clientRouter);
 protectedV1.use("/invoices", invoiceRouter);
 protectedV1.use("/payments", paymentRouter);
 protectedV1.use("/recurring-schedules", recurringRouter);
+protectedV1.use("/notifications", notificationRouter);
 protectedV1.use("/billing", billingRouter);
 
 v1Router.use(protectedV1);
