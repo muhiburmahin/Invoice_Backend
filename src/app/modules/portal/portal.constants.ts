@@ -5,6 +5,7 @@ export const PORTAL_ROUTES = {
   invoices: "/:token/invoices",
   invoiceById: "/:token/invoices/:invoiceId",
   invoicePdf: "/:token/invoices/:invoiceId/pdf",
+  invoiceCheckout: "/:token/invoices/:invoiceId/checkout",
 } as const;
 
 /** Invoice statuses visible to clients in the portal. */

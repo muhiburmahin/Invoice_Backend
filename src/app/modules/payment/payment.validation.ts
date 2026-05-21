@@ -89,3 +89,18 @@ export type UpdatePaymentStatusInput = z.infer<
 export type ListPaymentsQuery = z.infer<
   typeof listPaymentsQuerySchema
 >["query"];
+
+export const stripeCheckoutSchema = z.object({
+  body: z.object({
+    invoiceId: z
+      .string({ message: "Invoice is required" })
+      .cuid("Please select a valid invoice"),
+    amount: z
+      .number()
+      .min(PAYMENT_POLICY.amount.min, "Amount must be greater than zero")
+      .max(PAYMENT_POLICY.amount.max, "Amount is too large")
+      .optional(),
+  }),
+});
+
+export type StripeCheckoutInput = z.infer<typeof stripeCheckoutSchema>["body"];

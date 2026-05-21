@@ -4,6 +4,7 @@ import rateLimit from "express-rate-limit";
 import { validateRequest } from "../../middlewares";
 
 import {
+  createPortalCheckoutHandler,
   getPortalInvoiceHandler,
   getPortalInvoicePdfHandler,
   listPortalInvoicesHandler,
@@ -11,6 +12,7 @@ import {
 } from "./portal.controller";
 import {
   listPortalInvoicesQuerySchema,
+  portalCheckoutSchema,
   portalInvoiceParamSchema,
   portalTokenParamSchema,
 } from "./portal.validation";
@@ -50,6 +52,16 @@ portalRouter.get(
   "/:token/invoices/:invoiceId/pdf",
   validateRequest({ params: portalInvoiceParamSchema.shape.params }),
   getPortalInvoicePdfHandler,
+);
+
+portalRouter.post(
+  "/:token/invoices/:invoiceId/checkout",
+  portalLimit,
+  validateRequest({
+    params: portalCheckoutSchema.shape.params,
+    body: portalCheckoutSchema.shape.body,
+  }),
+  createPortalCheckoutHandler,
 );
 
 portalRouter.get(

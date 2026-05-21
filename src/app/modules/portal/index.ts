@@ -6,6 +6,7 @@ export {
 export { resolvePortalClient, getClientPortalLink, buildPortalUrl } from "./portal.helpers";
 export { portalRouter } from "./portal.routes";
 export {
+  createPortalInvoiceCheckout,
   downloadPortalInvoicePdf,
   getPortalInvoiceDetail,
   getPortalMeta,

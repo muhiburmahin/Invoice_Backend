@@ -4,6 +4,7 @@ export const PAYMENT_ROUTES = {
   list: "/",
   stats: "/stats",
   meta: "/meta",
+  stripeCheckout: "/stripe/checkout",
   byId: "/:id",
   status: "/:id/status",
 } as const;

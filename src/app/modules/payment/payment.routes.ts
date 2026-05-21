@@ -5,6 +5,7 @@ import { validateRequest } from "../../middlewares";
 
 import {
   cancelPaymentHandler,
+  createStripeCheckoutHandler,
   getPaymentHandler,
   listPaymentsHandler,
   paymentMetaHandler,
@@ -16,6 +17,7 @@ import {
   createPaymentSchema,
   listPaymentsQuerySchema,
   paymentIdParamSchema,
+  stripeCheckoutSchema,
   updatePaymentStatusSchema,
 } from "./payment.validation";
 
@@ -51,6 +53,13 @@ paymentRouter.get(
 );
 
 /* ------------------------------ Write ------------------------------------ */
+
+paymentRouter.post(
+  "/stripe/checkout",
+  moderate,
+  validateRequest({ body: stripeCheckoutSchema.shape.body }),
+  createStripeCheckoutHandler,
+);
 
 paymentRouter.post(
   "/",

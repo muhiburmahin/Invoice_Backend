@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { PAYMENT_POLICY } from "../payment/payment.constants";
+
 const portalTokenSchema = z
   .string()
   .trim()
@@ -44,3 +46,19 @@ export const listPortalInvoicesQuerySchema = z.object({
 export type ListPortalInvoicesQuery = z.infer<
   typeof listPortalInvoicesQuerySchema
 >["query"];
+
+export const portalCheckoutSchema = z.object({
+  params: portalInvoiceParamSchema.shape.params,
+  body: z
+    .object({
+      amount: z
+        .number()
+        .min(PAYMENT_POLICY.amount.min, "Amount must be greater than zero")
+        .max(PAYMENT_POLICY.amount.max, "Amount is too large")
+        .optional(),
+    })
+    .optional()
+    .default({}),
+});
+
+export type PortalCheckoutInput = z.infer<typeof portalCheckoutSchema>["body"];

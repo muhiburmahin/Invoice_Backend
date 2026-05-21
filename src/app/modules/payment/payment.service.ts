@@ -17,7 +17,8 @@ import {
   PAYMENT_METHODS,
   PAYMENT_STATUSES,
 } from "./payment.constants";
-import { isStripeConfigured } from "../../services/billing/stripe.client";
+import { createInvoiceStripeCheckout, getStripeCheckoutMeta } from "../../services/billing/stripeCheckout.service";
+import { config } from "../../config";
 import {
   assertCanCompletePayment,
   assertPayableInvoice,
@@ -31,6 +32,7 @@ import {
 import type {
   CreatePaymentInput,
   ListPaymentsQuery,
+  StripeCheckoutInput,
   UpdatePaymentStatusInput,
 } from "./payment.validation";
 
@@ -89,9 +91,9 @@ export async function recordPayment(
   if (input.method === "STRIPE") {
     assertStripeAvailable();
     throw new ApiError(
-      501,
-      "Stripe checkout is not yet implemented. Use a manual method for now.",
-      { code: "STRIPE_NOT_IMPLEMENTED" },
+      400,
+      "Use POST /payments/stripe/checkout to pay via Stripe.",
+      { code: "STRIPE_USE_CHECKOUT" },
     );
   }
 
@@ -306,13 +308,15 @@ export async function getPaymentStats(userId: string) {
 }
 
 export function getPaymentMeta() {
+  const stripe = getStripeCheckoutMeta();
   return {
     methods: PAYMENT_METHODS,
     statuses: PAYMENT_STATUSES,
     transitions: ALLOWED_PAYMENT_STATUS_TRANSITIONS,
     manualMethods: MANUAL_PAYMENT_METHODS,
     payableInvoiceStatuses: PAYABLE_INVOICE_STATUSES,
-    stripeConfigured: isStripeConfigured(),
+    stripeConfigured: stripe.configured,
+    stripeCheckoutAvailable: stripe.checkoutAvailable,
   };
 }
 
@@ -397,6 +401,26 @@ export async function updatePaymentStatus(
     allowedTransitions:
       ALLOWED_PAYMENT_STATUS_TRANSITIONS[updated.payment.status] ?? [],
   };
+}
+
+/* -------------------------------------------------------------------------- */
+/*                            Stripe checkout                                 */
+/* -------------------------------------------------------------------------- */
+
+export async function createStripeCheckout(
+  userId: string,
+  input: StripeCheckoutInput,
+) {
+  const base = config.clientUrl.replace(/\/$/, "");
+  const invoicePath = `${base}/invoices/${input.invoiceId}`;
+
+  return createInvoiceStripeCheckout({
+    userId,
+    invoiceId: input.invoiceId,
+    amount: input.amount,
+    successUrl: `${invoicePath}?payment=success`,
+    cancelUrl: `${invoicePath}?payment=cancelled`,
+  });
 }
 
 /* -------------------------------------------------------------------------- */

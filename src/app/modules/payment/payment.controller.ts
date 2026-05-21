@@ -6,6 +6,7 @@ import { sendSuccess } from "../../shared/sendResponse";
 
 import {
   cancelPayment,
+  createStripeCheckout,
   getPaymentDetail,
   getPaymentMeta,
   getPaymentStats,
@@ -75,6 +76,13 @@ export const updatePaymentStatusHandler: RequestHandler = catchAsync(
       ...data,
       message: `Payment status updated to ${data.payment.status}`,
     });
+  },
+);
+
+export const createStripeCheckoutHandler: RequestHandler = catchAsync(
+  async (req, res) => {
+    const data = await createStripeCheckout(getUserId(req), req.body);
+    sendSuccess(res, data, 201);
   },
 );
 

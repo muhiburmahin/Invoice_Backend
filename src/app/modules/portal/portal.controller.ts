@@ -4,6 +4,7 @@ import { catchAsync } from "../../shared/catchAsync";
 import { sendSuccess } from "../../shared/sendResponse";
 
 import {
+  createPortalInvoiceCheckout,
   downloadPortalInvoicePdf,
   getPortalInvoiceDetail,
   getPortalMeta,
@@ -56,5 +57,16 @@ export const getPortalInvoicePdfHandler: RequestHandler = catchAsync(
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
     res.send(buffer);
+  },
+);
+
+export const createPortalCheckoutHandler: RequestHandler = catchAsync(
+  async (req, res) => {
+    const data = await createPortalInvoiceCheckout(
+      getPortalToken(req),
+      getInvoiceId(req),
+      req.body,
+    );
+    sendSuccess(res, data, 201);
   },
 );

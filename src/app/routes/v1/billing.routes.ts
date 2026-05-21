@@ -1,14 +1,11 @@
 import { Router } from "express";
 import type { Request, Response } from "express";
 
-import { config } from "../../config";
-import { features } from "../../config/features";
-import { ApiError } from "../../errors/ApiError";
 import { loadSubscription } from "../../middlewares";
 import { catchAsync } from "../../shared/catchAsync";
 import { sendSuccess } from "../../shared/sendResponse";
 import { getUsageSnapshot } from "../../services/billing/planUsage.service";
-import { isStripeConfigured } from "../../services/billing/stripe.client";
+import { handleStripeWebhook } from "../../services/billing/stripeCheckout.service";
 
 export const billingRouter = Router();
 
@@ -30,19 +27,8 @@ billingRouter.get(
   }),
 );
 
-/**
- * Stripe webhook — mount with `express.raw` in `app.ts` (before `express.json`).
- * Implement signature verification + event handlers when billing goes live.
- */
+/** Stripe webhook — mounted with `express.raw` in `app.ts` (before `express.json`). */
 export async function stripeWebhookHandler(req: Request, res: Response): Promise<void> {
-  if (!features.isBillingEnabled()) {
-    throw new ApiError(503, "Billing is disabled", { code: "BILLING_DISABLED" });
-  }
-
-  if (!isStripeConfigured() || !config.stripe.webhookSecret) {
-    throw new ApiError(503, "Stripe is not configured", { code: "STRIPE_NOT_CONFIGURED" });
-  }
-
-  // TODO: const stripe = getStripeClient(); stripe.webhooks.constructEvent(...)
-  sendSuccess(res, { received: true });
+  const result = await handleStripeWebhook(req);
+  sendSuccess(res, result);
 }

@@ -13,11 +13,18 @@ import {
   PORTAL_INVOICE_LIST_SELECT,
   PORTAL_VISIBLE_STATUSES,
 } from "./portal.constants";
-import { findPortalInvoice, markInvoiceViewedFromPortal, resolvePortalClient } from "./portal.helpers";
-import type { ListPortalInvoicesQuery } from "./portal.validation";
+import {
+  buildPortalUrl,
+  findPortalInvoice,
+  markInvoiceViewedFromPortal,
+  resolvePortalClient,
+} from "./portal.helpers";
+import type { ListPortalInvoicesQuery, PortalCheckoutInput } from "./portal.validation";
+import { createInvoiceStripeCheckout, getStripeCheckoutMeta } from "../../services/billing/stripeCheckout.service";
 
 export async function getPortalMeta(token: string) {
   const client = await resolvePortalClient(token);
+  const stripe = getStripeCheckoutMeta();
 
   return {
     client: {
@@ -27,6 +34,9 @@ export async function getPortalMeta(token: string) {
     },
     business: client.user.business,
     visibleStatuses: PORTAL_VISIBLE_STATUSES,
+    payments: {
+      stripeCheckoutAvailable: stripe.checkoutAvailable,
+    },
   };
 }
 
@@ -144,4 +154,29 @@ export async function downloadPortalInvoicePdf(
     buffer,
     filename: buildInvoicePdfFilename(invoice.number),
   };
+}
+
+export async function createPortalInvoiceCheckout(
+  token: string,
+  invoiceId: string,
+  input: PortalCheckoutInput = {},
+) {
+  const client = await resolvePortalClient(token);
+  const invoice = await findPortalInvoice(client.id, client.userId, invoiceId);
+
+  if (!PORTAL_VISIBLE_STATUSES.includes(invoice.status)) {
+    throw new ApiError(404, "Invoice not found", { code: "INVOICE_NOT_FOUND" });
+  }
+
+  const portalBase = buildPortalUrl(token);
+  const invoicePath = `${portalBase}/invoices/${invoiceId}`;
+
+  return createInvoiceStripeCheckout({
+    userId: client.userId,
+    invoiceId,
+    amount: input.amount,
+    customerEmail: client.email,
+    successUrl: `${invoicePath}?payment=success`,
+    cancelUrl: `${invoicePath}?payment=cancelled`,
+  });
 }
