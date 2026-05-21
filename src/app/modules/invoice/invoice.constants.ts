@@ -7,7 +7,33 @@ export const INVOICE_ROUTES = {
   byId: "/:id",
   status: "/:id/status",
   duplicate: "/:id/duplicate",
+  pdf: "/:id/pdf",
+  send: "/:id/send",
+  remind: "/:id/remind",
 } as const;
+
+export const INVOICE_EMAIL_POLICY = {
+  message: { max: 1_000 },
+} as const;
+
+/** Statuses allowed for first send (transitions to SENT). */
+export const SENDABLE_STATUSES: InvoiceStatus[] = ["DRAFT"];
+
+/** Statuses allowed for resend without changing status. */
+export const RESENDABLE_STATUSES: InvoiceStatus[] = [
+  "SENT",
+  "VIEWED",
+  "PARTIALLY_PAID",
+  "OVERDUE",
+];
+
+/** Statuses eligible for payment reminder emails. */
+export const REMINDABLE_STATUSES: InvoiceStatus[] = [
+  "SENT",
+  "VIEWED",
+  "PARTIALLY_PAID",
+  "OVERDUE",
+];
 
 export const INVOICE_POLICY = {
   notes: { max: 2_000 },
@@ -63,6 +89,7 @@ export const INVOICE_LIST_SELECT = {
   balanceDue: true,
   currency: true,
   sentAt: true,
+  reminderSentAt: true,
   viewedAt: true,
   isRecurring: true,
   recurringId: true,

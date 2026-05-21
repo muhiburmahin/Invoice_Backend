@@ -15,6 +15,9 @@ import {
 } from "../../services/billing/planUsage.service";
 import { getPlanLimits } from "../../constants/plans";
 import { writeAuditLog } from "../../services/audit/auditLog.service";
+import { sendInvoiceEmail } from "../../services/email/invoiceMail.service";
+import { isEmailConfigured } from "../../services/email/smtp.service";
+import { getInvoicePdfAsset } from "../../services/pdf/invoicePdf.service";
 import { getRequestIp } from "../auth/auth.helpers";
 import { getMyBusiness } from "../business/business.service";
 
@@ -24,6 +27,9 @@ import {
   EDITABLE_STATUSES,
   INVOICE_LIST_SELECT,
   INVOICE_STATUSES,
+  REMINDABLE_STATUSES,
+  RESENDABLE_STATUSES,
+  SENDABLE_STATUSES,
 } from "./invoice.constants";
 import {
   allocateInvoiceNumber,
@@ -41,6 +47,8 @@ import { assertRecurringScheduleLink } from "../recurring/recurring.helpers";
 import type {
   CreateInvoiceInput,
   ListInvoicesQuery,
+  RemindInvoiceInput,
+  SendInvoiceInput,
   UpdateInvoiceInput,
   UpdateInvoiceStatusInput,
 } from "./invoice.validation";
@@ -52,6 +60,33 @@ import type {
 function normaliseNullable(v: string | null | undefined): string | null {
   if (v === "" || v === undefined || v === null) return null;
   return v;
+}
+
+function assertInvoiceSendable(status: InvoiceStatus): void {
+  const allowed = [...SENDABLE_STATUSES, ...RESENDABLE_STATUSES];
+  if (!allowed.includes(status)) {
+    throw new ApiError(
+      409,
+      `Invoice in ${status} status cannot be sent`,
+      {
+        code: "INVOICE_NOT_SENDABLE",
+        details: { status, allowed },
+      },
+    );
+  }
+}
+
+function assertInvoiceRemindable(status: InvoiceStatus): void {
+  if (!REMINDABLE_STATUSES.includes(status)) {
+    throw new ApiError(
+      409,
+      `Payment reminders cannot be sent for a ${status} invoice`,
+      {
+        code: "INVOICE_NOT_REMINDABLE",
+        details: { status, allowed: REMINDABLE_STATUSES },
+      },
+    );
+  }
 }
 
 function resolveDueDate(
@@ -360,7 +395,119 @@ export function getInvoiceMeta() {
     transitions: ALLOWED_STATUS_TRANSITIONS,
     editableStatuses: EDITABLE_STATUSES,
     deletableStatuses: DELETABLE_STATUSES,
+    sendableStatuses: SENDABLE_STATUSES,
+    resendableStatuses: RESENDABLE_STATUSES,
+    remindableStatuses: REMINDABLE_STATUSES,
+    emailConfigured: isEmailConfigured(),
   };
+}
+
+/* -------------------------------------------------------------------------- */
+/*                              PDF + delivery                                */
+/* -------------------------------------------------------------------------- */
+
+export async function downloadInvoicePdf(userId: string, invoiceId: string) {
+  return getInvoicePdfAsset(userId, invoiceId);
+}
+
+export async function sendInvoice(
+  req: Request,
+  userId: string,
+  invoiceId: string,
+  input: SendInvoiceInput,
+) {
+  const current = await findOwnedInvoice(userId, invoiceId);
+  if (current.deletedAt) {
+    throw new ApiError(404, "Invoice not found", { code: "INVOICE_NOT_FOUND" });
+  }
+
+  assertInvoiceSendable(current.status);
+  assertSendableInvoice({ total: current.total, items: current.items });
+
+  const recipient = input.to ?? current.client.email;
+  const { buffer, data } = await getInvoicePdfAsset(userId, invoiceId);
+
+  await sendInvoiceEmail({
+    to: recipient,
+    data,
+    pdfBuffer: buffer,
+    personalMessage: normaliseNullable(input.message),
+  });
+
+  const now = new Date();
+  await prisma.invoice.update({
+    where: { id: invoiceId },
+    data: {
+      sentAt: now,
+      ...(current.status === "DRAFT" ? { status: "SENT" as const } : {}),
+    },
+  });
+
+  await writeAuditLog({
+    userId,
+    action: "invoice.send",
+    invoiceId,
+    metadata: {
+      number: current.number,
+      to: recipient,
+      previousStatus: current.status,
+      firstSend: current.status === "DRAFT",
+    },
+    ipAddress: getRequestIp(req),
+    userAgent: req.get("user-agent") ?? undefined,
+  });
+
+  return getInvoiceDetail(userId, invoiceId);
+}
+
+export async function remindInvoice(
+  req: Request,
+  userId: string,
+  invoiceId: string,
+  input: RemindInvoiceInput,
+) {
+  const current = await findOwnedInvoice(userId, invoiceId);
+  if (current.deletedAt) {
+    throw new ApiError(404, "Invoice not found", { code: "INVOICE_NOT_FOUND" });
+  }
+
+  assertInvoiceRemindable(current.status);
+  if (current.balanceDue <= 0) {
+    throw new ApiError(409, "Invoice has no outstanding balance", {
+      code: "INVOICE_ALREADY_PAID",
+    });
+  }
+
+  const recipient = input.to ?? current.client.email;
+  const { buffer, data } = await getInvoicePdfAsset(userId, invoiceId);
+
+  await sendInvoiceEmail({
+    to: recipient,
+    data,
+    pdfBuffer: buffer,
+    personalMessage: normaliseNullable(input.message),
+    isReminder: true,
+  });
+
+  await prisma.invoice.update({
+    where: { id: invoiceId },
+    data: { reminderSentAt: new Date() },
+  });
+
+  await writeAuditLog({
+    userId,
+    action: "invoice.remind",
+    invoiceId,
+    metadata: {
+      number: current.number,
+      to: recipient,
+      balanceDue: current.balanceDue,
+    },
+    ipAddress: getRequestIp(req),
+    userAgent: req.get("user-agent") ?? undefined,
+  });
+
+  return getInvoiceDetail(userId, invoiceId);
 }
 
 /* -------------------------------------------------------------------------- */

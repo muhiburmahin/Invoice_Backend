@@ -30,6 +30,11 @@ export type SendMailInput = {
   subject: string;
   text?: string;
   html?: string;
+  attachments?: Array<{
+    filename: string;
+    content: Buffer;
+    contentType?: string;
+  }>;
 };
 
 /** Transactional email — password reset, invoice notices, etc. */
@@ -46,6 +51,11 @@ export async function sendTransactionalMail(input: SendMailInput): Promise<void>
     subject: input.subject,
     text: input.text,
     html: input.html,
+    attachments: input.attachments?.map((file) => ({
+      filename: file.filename,
+      content: file.content,
+      contentType: file.contentType ?? "application/octet-stream",
+    })),
   });
   logger.info("Mail sent", { to: input.to, subject: input.subject });
 }

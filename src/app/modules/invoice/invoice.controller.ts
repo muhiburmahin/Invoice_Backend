@@ -7,11 +7,14 @@ import { sendSuccess } from "../../shared/sendResponse";
 import {
   createInvoice,
   deleteInvoice,
+  downloadInvoicePdf,
   duplicateInvoice,
   getInvoiceDetail,
   getInvoiceMeta,
   getInvoiceStats,
   listInvoices,
+  remindInvoice,
+  sendInvoice,
   updateInvoice,
   updateInvoiceStatus,
 } from "./invoice.service";
@@ -99,4 +102,40 @@ export const duplicateInvoiceHandler: RequestHandler = catchAsync(
 export const deleteInvoiceHandler: RequestHandler = catchAsync(async (req, res) => {
   await deleteInvoice(req, getUserId(req), getParamId(req));
   sendSuccess(res, { message: "Invoice deleted successfully" });
+});
+
+export const getInvoicePdfHandler: RequestHandler = catchAsync(async (req, res) => {
+  const { buffer, filename } = await downloadInvoicePdf(
+    getUserId(req),
+    getParamId(req),
+  );
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  res.send(buffer);
+});
+
+export const sendInvoiceHandler: RequestHandler = catchAsync(async (req, res) => {
+  const data = await sendInvoice(
+    req,
+    getUserId(req),
+    getParamId(req),
+    req.body,
+  );
+  sendSuccess(res, {
+    ...data,
+    message: "Invoice sent successfully",
+  });
+});
+
+export const remindInvoiceHandler: RequestHandler = catchAsync(async (req, res) => {
+  const data = await remindInvoice(
+    req,
+    getUserId(req),
+    getParamId(req),
+    req.body,
+  );
+  sendSuccess(res, {
+    ...data,
+    message: "Payment reminder sent successfully",
+  });
 });

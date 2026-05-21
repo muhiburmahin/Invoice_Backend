@@ -3,7 +3,7 @@ import { z } from "zod";
 import { cuidParamSchema } from "../../validation/common.schemas";
 import { CURRENCY_CODES } from "../business/business.constants";
 
-import { INVOICE_POLICY, INVOICE_STATUSES } from "./invoice.constants";
+import { INVOICE_EMAIL_POLICY, INVOICE_POLICY, INVOICE_STATUSES } from "./invoice.constants";
 
 /* -------------------------------------------------------------------------- */
 /*                              Reusable atoms                                */
@@ -237,3 +237,40 @@ export type UpdateInvoiceStatusInput = z.infer<
 export type ListInvoicesQuery = z.infer<
   typeof listInvoicesQuerySchema
 >["query"];
+
+const optionalEmailSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .email("Please enter a valid email address")
+  .optional();
+
+const invoiceMessageSchema = z
+  .string()
+  .trim()
+  .max(INVOICE_EMAIL_POLICY.message.max, "Message is too long")
+  .optional()
+  .or(z.literal(""));
+
+export const sendInvoiceSchema = z.object({
+  params: cuidParamSchema,
+  body: z
+    .object({
+      to: optionalEmailSchema,
+      message: invoiceMessageSchema,
+    })
+    .default({}),
+});
+
+export const remindInvoiceSchema = z.object({
+  params: cuidParamSchema,
+  body: z
+    .object({
+      to: optionalEmailSchema,
+      message: invoiceMessageSchema,
+    })
+    .default({}),
+});
+
+export type SendInvoiceInput = z.infer<typeof sendInvoiceSchema>["body"];
+export type RemindInvoiceInput = z.infer<typeof remindInvoiceSchema>["body"];

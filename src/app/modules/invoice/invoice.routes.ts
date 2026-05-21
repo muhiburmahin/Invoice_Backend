@@ -9,9 +9,12 @@ import {
   deleteInvoiceHandler,
   duplicateInvoiceHandler,
   getInvoiceHandler,
+  getInvoicePdfHandler,
   invoiceMetaHandler,
   invoiceStatsHandler,
   listInvoicesHandler,
+  remindInvoiceHandler,
+  sendInvoiceHandler,
   updateInvoiceHandler,
   updateInvoiceStatusHandler,
 } from "./invoice.controller";
@@ -19,6 +22,8 @@ import {
   createInvoiceSchema,
   invoiceIdParamSchema,
   listInvoicesQuerySchema,
+  remindInvoiceSchema,
+  sendInvoiceSchema,
   updateInvoiceSchema,
   updateInvoiceStatusSchema,
 } from "./invoice.validation";
@@ -60,6 +65,13 @@ invoiceRouter.get(
 );
 
 invoiceRouter.get(
+  "/:id/pdf",
+  loadSubscription,
+  validateRequest({ params: invoiceIdParamSchema.shape.params }),
+  getInvoicePdfHandler,
+);
+
+invoiceRouter.get(
   "/:id",
   validateRequest({ params: invoiceIdParamSchema.shape.params }),
   getInvoiceHandler,
@@ -81,6 +93,28 @@ invoiceRouter.post(
   loadSubscription,
   validateRequest({ params: invoiceIdParamSchema.shape.params }),
   duplicateInvoiceHandler,
+);
+
+invoiceRouter.post(
+  "/:id/send",
+  moderate,
+  loadSubscription,
+  validateRequest({
+    params: sendInvoiceSchema.shape.params,
+    body: sendInvoiceSchema.shape.body,
+  }),
+  sendInvoiceHandler,
+);
+
+invoiceRouter.post(
+  "/:id/remind",
+  moderate,
+  loadSubscription,
+  validateRequest({
+    params: remindInvoiceSchema.shape.params,
+    body: remindInvoiceSchema.shape.body,
+  }),
+  remindInvoiceHandler,
 );
 
 invoiceRouter.patch(
