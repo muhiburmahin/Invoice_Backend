@@ -16,29 +16,59 @@ type SchemaShape = {
   cookies?: ZodTypeAny;
 };
 
+/** Parsed query/body/params after Zod validation (Express 5 query merge is unreliable). */
+export type ValidatedRequest = Request & {
+  validatedQuery?: unknown;
+  validatedBody?: unknown;
+  validatedParams?: unknown;
+};
+
+/** Use instead of `req.query` after {@link validateRequest} — Zod-coerced types are reliable. */
+export function getValidatedQuery<T>(req: Request): T {
+  const query = (req as ValidatedRequest).validatedQuery;
+  if (query === undefined) {
+    throw new ApiError(500, "Validated query is missing on this request", {
+      code: "VALIDATED_QUERY_MISSING",
+    });
+  }
+  return query as T;
+}
+
+/** Express 5 exposes `query` (and sometimes `body`) as read-only getters — merge instead of assign. */
+function mergeValidated<T extends object>(target: T, parsed: unknown): void {
+  if (typeof parsed === "object" && parsed !== null) {
+    Object.assign(target, parsed as object);
+  }
+}
+
 export function validateRequest(schemas: SchemaShape): RequestHandler {
   return catchAsync(async (req, _res, next) => {
     try {
       if (schemas.body !== undefined) {
-        req.body = await schemas.body.parseAsync(req.body);
+        const parsed = await schemas.body.parseAsync(req.body);
+        mergeValidated(
+          req.body as Record<string, unknown>,
+          parsed,
+        );
       }
       if (schemas.query !== undefined) {
-        req.query = (await schemas.query.parseAsync(
-          req.query,
-        )) as typeof req.query;
+        const parsed = await schemas.query.parseAsync(req.query);
+        (req as ValidatedRequest).validatedQuery = parsed;
+        mergeValidated(
+          req.query as Record<string, unknown>,
+          parsed,
+        );
       }
       if (schemas.params !== undefined) {
         const parsed = await schemas.params.parseAsync(req.params);
-        if (typeof parsed === "object" && parsed !== null) {
-          Object.assign(req.params, parsed as object);
-        }
+        mergeValidated(req.params as Record<string, unknown>, parsed);
       }
       if (schemas.cookies !== undefined) {
-        (req as Request & { cookies: Record<string, unknown> }).cookies =
-          (await schemas.cookies.parseAsync(req.cookies ?? {})) as Record<
-            string,
-            unknown
-          >;
+        const parsed = await schemas.cookies.parseAsync(req.cookies ?? {});
+        mergeValidated(
+          (req as Request & { cookies: Record<string, unknown> }).cookies,
+          parsed,
+        );
       }
       next();
     } catch (e: unknown) {

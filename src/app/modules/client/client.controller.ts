@@ -1,6 +1,7 @@
 import type { RequestHandler } from "express";
 
 import { ApiError } from "../../errors/ApiError";
+import { getValidatedQuery } from "../../middlewares/validateRequest";
 import { catchAsync } from "../../shared/catchAsync";
 import { sendSuccess } from "../../shared/sendResponse";
 
@@ -37,7 +38,7 @@ function getParamId(req: Parameters<RequestHandler>[0]): string {
 export const listClientsHandler: RequestHandler = catchAsync(async (req, res) => {
   const { rows, meta } = await listClients(
     getUserId(req),
-    req.query as unknown as Parameters<typeof listClients>[1],
+    getValidatedQuery<Parameters<typeof listClients>[1]>(req),
   );
   sendSuccess(res, { clients: rows }, 200, meta);
 });

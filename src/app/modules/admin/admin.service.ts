@@ -16,6 +16,7 @@ import { SCHEDULED_JOB_NAMES } from "../../services/jobs";
 import { triggerScheduledJobs } from "../../services/jobs/scheduler";
 import { notifySubscriptionCancelled } from "../../services/notification";
 import { getRequestIp } from "../auth/auth.helpers";
+import { getMonthBuckets } from "../../../utils/monthBuckets";
 
 import { SUPPORT_CAPABILITIES } from "./admin.constants";
 import type {
@@ -533,11 +534,14 @@ export async function triggerPasswordReset(
 /*                            Platform statistics                             */
 /* -------------------------------------------------------------------------- */
 
+const CHART_MONTHS = 6;
+
 export async function getPlatformStats(actorRole: UserRole) {
   assertCapability(actorRole, "readStats");
 
   const monthStart = startOfMonth(new Date());
   const lastMonthStart = startOfMonth(subMonths(new Date(), 1));
+  const monthBuckets = getMonthBuckets(CHART_MONTHS);
 
   const [
     totalUsers,
@@ -551,6 +555,10 @@ export async function getPlatformStats(actorRole: UserRole) {
     revenueSumThisMonth,
     revenueSumAllTime,
     planCounts,
+    monthlyUserCounts,
+    monthlyRevenueSums,
+    invoiceStatusCounts,
+    userRoleCounts,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { isActive: true, deletedAt: null } }),
@@ -578,6 +586,34 @@ export async function getPlatformStats(actorRole: UserRole) {
       by: ["plan"],
       _count: { _all: true },
     }),
+    Promise.all(
+      monthBuckets.map((bucket) =>
+        prisma.user.count({
+          where: { createdAt: { gte: bucket.start, lt: bucket.end } },
+        }),
+      ),
+    ),
+    Promise.all(
+      monthBuckets.map((bucket) =>
+        prisma.payment.aggregate({
+          where: {
+            status: "COMPLETED",
+            paidAt: { gte: bucket.start, lt: bucket.end },
+          },
+          _sum: { amount: true },
+        }),
+      ),
+    ),
+    prisma.invoice.groupBy({
+      by: ["status"],
+      where: { deletedAt: null },
+      _count: { _all: true },
+    }),
+    prisma.user.groupBy({
+      by: ["role"],
+      where: { deletedAt: null },
+      _count: { _all: true },
+    }),
   ]);
 
   const planBreakdown = planCounts.reduce<Record<string, number>>(
@@ -586,6 +622,22 @@ export async function getPlatformStats(actorRole: UserRole) {
       return acc;
     },
     { FREE: 0, PRO: 0, ENTERPRISE: 0 },
+  );
+
+  const invoicesByStatus = invoiceStatusCounts.reduce<Record<string, number>>(
+    (acc, row) => {
+      acc[row.status] = row._count._all;
+      return acc;
+    },
+    {},
+  );
+
+  const usersByRole = userRoleCounts.reduce<Record<string, number>>(
+    (acc, row) => {
+      acc[row.role] = row._count._all;
+      return acc;
+    },
+    {},
   );
 
   return {
@@ -606,6 +658,20 @@ export async function getPlatformStats(actorRole: UserRole) {
       allTime: revenueSumAllTime._sum.amount ?? 0,
     },
     plans: planBreakdown,
+    charts: {
+      userGrowth: monthBuckets.map((bucket, i) => ({
+        label: bucket.label,
+        key: bucket.key,
+        count: monthlyUserCounts[i] ?? 0,
+      })),
+      revenueTrend: monthBuckets.map((bucket, i) => ({
+        label: bucket.label,
+        key: bucket.key,
+        amount: monthlyRevenueSums[i]?._sum.amount ?? 0,
+      })),
+      invoicesByStatus,
+      usersByRole,
+    },
   };
 }
 

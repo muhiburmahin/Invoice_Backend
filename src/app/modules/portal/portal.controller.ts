@@ -1,5 +1,6 @@
 import type { RequestHandler } from "express";
 
+import { getValidatedQuery } from "../../middlewares/validateRequest";
 import { catchAsync } from "../../shared/catchAsync";
 import { sendSuccess } from "../../shared/sendResponse";
 
@@ -32,7 +33,7 @@ export const listPortalInvoicesHandler: RequestHandler = catchAsync(
   async (req, res) => {
     const { rows, meta } = await listPortalInvoices(
       getPortalToken(req),
-      req.query as unknown as Parameters<typeof listPortalInvoices>[1],
+      getValidatedQuery<Parameters<typeof listPortalInvoices>[1]>(req),
     );
     sendSuccess(res, { invoices: rows }, 200, meta);
   },

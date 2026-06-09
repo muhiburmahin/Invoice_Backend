@@ -1,6 +1,8 @@
 import type { Request } from "express";
 import { startOfMonth } from "date-fns";
 
+import { getMonthBuckets } from "../../../utils/monthBuckets";
+
 import type {
   DiscountType,
   InvoiceStatus,
@@ -302,10 +304,13 @@ export async function listInvoices(userId: string, query: ListInvoicesQuery) {
 /*                                   Stats                                    */
 /* -------------------------------------------------------------------------- */
 
+const INVOICE_CHART_MONTHS = 6;
+
 export async function getInvoiceStats(userId: string) {
   const monthStart = startOfMonth(new Date());
+  const monthBuckets = getMonthBuckets(INVOICE_CHART_MONTHS);
 
-  const [usage, total, thisMonth, statusGroups, outstanding] =
+  const [usage, total, thisMonth, statusGroups, outstanding, monthlyCreatedCounts] =
     await Promise.all([
       getUsageSnapshot(userId),
       prisma.invoice.count({ where: { userId, deletedAt: null } }),
@@ -325,6 +330,17 @@ export async function getInvoiceStats(userId: string) {
         },
         _sum: { balanceDue: true },
       }),
+      Promise.all(
+        monthBuckets.map((bucket) =>
+          prisma.invoice.count({
+            where: {
+              userId,
+              deletedAt: null,
+              createdAt: { gte: bucket.start, lt: bucket.end },
+            },
+          }),
+        ),
+      ),
     ]);
 
   const limits = getPlanLimits(usage.plan);
@@ -338,6 +354,11 @@ export async function getInvoiceStats(userId: string) {
     thisMonth,
     outstandingBalance: outstanding._sum.balanceDue ?? 0,
     byStatus,
+    monthlyCreated: monthBuckets.map((bucket, i) => ({
+      label: bucket.label,
+      key: bucket.key,
+      count: monthlyCreatedCounts[i] ?? 0,
+    })),
     plan: usage.plan,
     usage: {
       invoicesThisMonth: usage.invoicesThisMonth,

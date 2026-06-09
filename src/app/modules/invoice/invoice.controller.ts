@@ -1,6 +1,7 @@
 import type { RequestHandler } from "express";
 
 import { ApiError } from "../../errors/ApiError";
+import { getValidatedQuery } from "../../middlewares/validateRequest";
 import { catchAsync } from "../../shared/catchAsync";
 import { sendSuccess } from "../../shared/sendResponse";
 
@@ -39,7 +40,7 @@ function getParamId(req: Parameters<RequestHandler>[0]): string {
 export const listInvoicesHandler: RequestHandler = catchAsync(async (req, res) => {
   const { rows, meta } = await listInvoices(
     getUserId(req),
-    req.query as unknown as Parameters<typeof listInvoices>[1],
+    getValidatedQuery<Parameters<typeof listInvoices>[1]>(req),
   );
   sendSuccess(res, { invoices: rows }, 200, meta);
 });

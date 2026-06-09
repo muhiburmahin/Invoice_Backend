@@ -85,7 +85,8 @@ app.use(
   "/api",
   rateLimit({
     windowMs: config.rateLimitWindowMs,
-    max: config.rateLimitMax,
+    // Dev dashboards fan out many parallel reads — avoid 429 during local work.
+    max: config.nodeEnv === "development" ? 2000 : config.rateLimitMax,
     standardHeaders: true,
     legacyHeaders: false,
     skip: (req) => req.originalUrl.startsWith("/api/auth"),

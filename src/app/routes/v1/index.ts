@@ -21,6 +21,7 @@ import { recurringRouter } from "../../modules/recurring";
 import { notificationRouter } from "../../modules/notification";
 import { getUnreadNotificationCount } from "../../modules/notification/notification.service";
 import { billingRouter } from "./billing.routes";
+import { marketingRouter } from "../../modules/marketing";
 
 /**
  * Versioned product API (`/api/v1/...`).
@@ -30,6 +31,7 @@ import { billingRouter } from "./billing.routes";
 const v1Router = Router();
 
 v1Router.use("/auth", authRouter);
+v1Router.use("/public/marketing", marketingRouter);
 v1Router.use("/admin", adminRouter);
 v1Router.use("/portal", portalRouter);
 

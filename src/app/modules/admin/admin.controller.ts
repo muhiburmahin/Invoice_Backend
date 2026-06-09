@@ -1,6 +1,7 @@
 import type { RequestHandler } from "express";
 
 import { ApiError } from "../../errors/ApiError";
+import { getValidatedQuery } from "../../middlewares/validateRequest";
 import { catchAsync } from "../../shared/catchAsync";
 import { sendSuccess } from "../../shared/sendResponse";
 
@@ -40,7 +41,7 @@ export const listUsersHandler: RequestHandler = catchAsync(async (req, res) => {
   const actor = getActor(req);
   const { rows, meta } = await listUsers(
     actor.role,
-    req.query as unknown as Parameters<typeof listUsers>[1],
+    getValidatedQuery<Parameters<typeof listUsers>[1]>(req),
   );
   sendSuccess(res, { users: rows }, 200, meta);
 });
@@ -122,7 +123,7 @@ export const activityLogsHandler: RequestHandler = catchAsync(async (req, res) =
   const actor = getActor(req);
   const { rows, meta } = await listActivityLogs(
     actor.role,
-    req.query as unknown as Parameters<typeof listActivityLogs>[1],
+    getValidatedQuery<Parameters<typeof listActivityLogs>[1]>(req),
   );
   sendSuccess(res, { logs: rows }, 200, meta);
 });

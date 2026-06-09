@@ -1,6 +1,8 @@
 import type { Request } from "express";
 import { startOfMonth } from "date-fns";
 
+import { getMonthBuckets } from "../../../utils/monthBuckets";
+
 import type { PaymentStatus, Prisma } from "../../../generated/prisma/client";
 import { ApiError } from "../../errors/ApiError";
 import { prisma } from "../../shared/prisma";
@@ -255,11 +257,21 @@ export async function listInvoicePayments(
 /*                                   Stats                                    */
 /* -------------------------------------------------------------------------- */
 
+const PAYMENT_CHART_MONTHS = 6;
+
 export async function getPaymentStats(userId: string) {
   const monthStart = startOfMonth(new Date());
+  const monthBuckets = getMonthBuckets(PAYMENT_CHART_MONTHS);
 
-  const [total, thisMonth, completedSum, completedThisMonth, pendingSum, methodGroups] =
-    await Promise.all([
+  const [
+    total,
+    thisMonth,
+    completedSum,
+    completedThisMonth,
+    pendingSum,
+    methodGroups,
+    monthlyRevenueSums,
+  ] = await Promise.all([
       prisma.payment.count({
         where: { invoice: { userId, deletedAt: null } },
       }),
@@ -300,6 +312,18 @@ export async function getPaymentStats(userId: string) {
         _count: { _all: true },
         _sum: { amount: true },
       }),
+      Promise.all(
+        monthBuckets.map((bucket) =>
+          prisma.payment.aggregate({
+            where: {
+              invoice: { userId, deletedAt: null },
+              status: "COMPLETED",
+              paidAt: { gte: bucket.start, lt: bucket.end },
+            },
+            _sum: { amount: true },
+          }),
+        ),
+      ),
     ]);
 
   const byMethod = methodGroups.reduce<
@@ -319,6 +343,11 @@ export async function getPaymentStats(userId: string) {
     completedThisMonth: completedThisMonth._sum.amount ?? 0,
     pendingTotal: pendingSum._sum.amount ?? 0,
     byMethod,
+    monthlyTrend: monthBuckets.map((bucket, i) => ({
+      label: bucket.label,
+      key: bucket.key,
+      amount: monthlyRevenueSums[i]?._sum.amount ?? 0,
+    })),
   };
 }
 

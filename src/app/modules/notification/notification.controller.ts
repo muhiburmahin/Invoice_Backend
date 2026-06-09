@@ -1,6 +1,7 @@
 import type { RequestHandler } from "express";
 
 import { ApiError } from "../../errors/ApiError";
+import { getValidatedQuery } from "../../middlewares/validateRequest";
 import { catchAsync } from "../../shared/catchAsync";
 import { sendSuccess } from "../../shared/sendResponse";
 
@@ -36,7 +37,7 @@ export const listNotificationsHandler: RequestHandler = catchAsync(
   async (req, res) => {
     const { rows, meta } = await listNotifications(
       getUserId(req),
-      req.query as unknown as Parameters<typeof listNotifications>[1],
+      getValidatedQuery<Parameters<typeof listNotifications>[1]>(req),
     );
     sendSuccess(res, { notifications: rows }, 200, meta);
   },
