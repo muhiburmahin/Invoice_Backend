@@ -1,6 +1,6 @@
 import { startOfMonth } from "date-fns";
 
-import type { SubscriptionPlan } from "../../../generated/prisma/client";
+import type { SubscriptionPlan } from "@prisma/client";
 import { getPlanLimits } from "../../constants/plans";
 import { ApiError } from "../../errors/ApiError";
 import { prisma } from "../../shared/prisma";

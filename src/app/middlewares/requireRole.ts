@@ -1,6 +1,6 @@
 import type { RequestHandler } from "express";
 
-import type { UserRole } from "../../generated/prisma/client";
+import type { UserRole } from "@prisma/client";
 import { ApiError } from "../errors/ApiError";
 import { prisma } from "../shared/prisma";
 import { catchAsync } from "../shared/catchAsync";

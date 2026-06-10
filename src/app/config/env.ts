@@ -15,6 +15,8 @@ const envSchema = z
     DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
 
     CLIENT_URL: z.string().url().default("http://localhost:5173"),
+    /** Production frontend URL (Vercel production domain). */
+    PROD_APP_URL: z.string().url().optional(),
     /** Comma-separated allowed browser origins (SaaS). Defaults to CLIENT_URL only. */
     CORS_ORIGINS: z.string().optional(),
 

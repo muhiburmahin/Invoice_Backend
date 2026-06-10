@@ -1,3 +1,5 @@
+import "dotenv/config";
+
 import { toNodeHandler } from "better-auth/node";
 import compression from "compression";
 import cookieParser from "cookie-parser";
@@ -9,6 +11,8 @@ import helmet from "helmet";
 import morgan from "morgan";
 
 import { config } from "./app/config";
+import { corsOptions } from "./app/lib/cors";
+import { auth } from "./app/lib/auth";
 import {
   globalErrorHandler,
   notFound,
@@ -19,7 +23,6 @@ import {
 import { systemRouter } from "./app/routes/system.routes";
 import { v1Router } from "./app/routes";
 import { stripeWebhookHandler } from "./app/routes/v1/billing.routes";
-import { auth } from "./app/lib/auth";
 import { catchAsync } from "./app/shared/catchAsync";
 import { sendSuccess } from "./app/shared/sendResponse";
 
@@ -37,23 +40,7 @@ app.use(
     crossOriginEmbedderPolicy: false,
   }),
 );
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      const allowed = config.corsOrigins;
-      if (!origin) {
-        callback(null, true);
-        return;
-      }
-      if (allowed.includes(origin)) {
-        callback(null, true);
-        return;
-      }
-      callback(null, false);
-    },
-    credentials: true,
-  }),
-);
+app.use(cors(corsOptions));
 app.use(compression());
 
 morgan.token("request-id", (req: Request) => req.requestId ?? "-");
@@ -85,7 +72,6 @@ app.use(
   "/api",
   rateLimit({
     windowMs: config.rateLimitWindowMs,
-    // Dev dashboards fan out many parallel reads — avoid 429 during local work.
     max: config.nodeEnv === "development" ? 2000 : config.rateLimitMax,
     standardHeaders: true,
     legacyHeaders: false,

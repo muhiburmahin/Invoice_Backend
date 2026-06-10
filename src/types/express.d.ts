@@ -1,5 +1,5 @@
 import type { AuthSessionPayload } from "../app/lib/auth-session";
-import type { Subscription, UserRole } from "../generated/prisma/client";
+import type { Subscription, UserRole } from "@prisma/client";
 
 declare global {
   namespace Express {

@@ -1,7 +1,7 @@
 import type { Request } from "express";
 import { addDays, startOfDay } from "date-fns";
 
-import type { Prisma } from "../../../generated/prisma/client";
+import type { Prisma } from "@prisma/client";
 import { ApiError } from "../../errors/ApiError";
 import { getPlanLimits } from "../../constants/plans";
 import { prisma } from "../../shared/prisma";

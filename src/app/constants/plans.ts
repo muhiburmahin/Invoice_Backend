@@ -1,4 +1,4 @@
-import type { SubscriptionPlan } from "../../generated/prisma/client";
+import type { SubscriptionPlan } from "@prisma/client";
 
 export type PlanLimits = {
   maxClients: number;

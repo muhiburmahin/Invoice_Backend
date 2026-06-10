@@ -116,20 +116,35 @@ function resolveCallbackUrl(req: Request): string | undefined {
 }
 
 export const googleStart: RequestHandler = catchAsync(async (req, res) => {
-  const url = await buildSocialSignInUrl(req, "google", resolveCallbackUrl(req));
+  const { url, setCookie } = await buildSocialSignInUrl(
+    req,
+    "google",
+    resolveCallbackUrl(req),
+  );
+  applyCookies(res, setCookie);
   res.redirect(url);
 });
 
 export const socialStart: RequestHandler = catchAsync(async (req, res) => {
   const provider = req.params.provider as OAuthProvider;
-  const url = await buildSocialSignInUrl(req, provider, resolveCallbackUrl(req));
+  const { url, setCookie } = await buildSocialSignInUrl(
+    req,
+    provider,
+    resolveCallbackUrl(req),
+  );
+  applyCookies(res, setCookie);
   res.redirect(url);
 });
 
 /** Frontend can call this instead of redirecting — useful for popup OAuth. */
 export const socialUrl: RequestHandler = catchAsync(async (req, res) => {
   const provider = req.params.provider as OAuthProvider;
-  const url = await buildSocialSignInUrl(req, provider, resolveCallbackUrl(req));
+  const { url, setCookie } = await buildSocialSignInUrl(
+    req,
+    provider,
+    resolveCallbackUrl(req),
+  );
+  applyCookies(res, setCookie);
   sendSuccess(res, { url, provider });
 });
 

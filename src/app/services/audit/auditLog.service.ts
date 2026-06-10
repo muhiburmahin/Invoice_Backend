@@ -1,4 +1,4 @@
-import type { Prisma } from "../../../generated/prisma/client";
+import type { Prisma } from "@prisma/client";
 
 import { features } from "../../config/features";
 import { prisma } from "../../shared/prisma";

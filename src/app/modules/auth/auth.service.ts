@@ -1,6 +1,6 @@
 import type { Request } from "express";
 
-import type { SubscriptionPlan, UserRole } from "../../../generated/prisma/client";
+import type { SubscriptionPlan, UserRole } from "@prisma/client";
 import { auth, isGithubEnabled, isGoogleEnabled } from "../../lib/auth";
 import { getSession } from "../../lib/auth-session";
 import { ApiError } from "../../errors/ApiError";
@@ -674,11 +674,17 @@ export function assertProviderEnabled(provider: OAuthProvider): void {
   }
 }
 
+export type SocialSignInStart = {
+  url: string;
+  /** OAuth state cookies — must be sent to the browser before redirecting to Google. */
+  setCookie: string[];
+};
+
 export async function buildSocialSignInUrl(
   req: Request,
   provider: OAuthProvider,
   callbackURL?: string,
-): Promise<string> {
+): Promise<SocialSignInStart> {
   assertProviderEnabled(provider);
 
   // Guard against open-redirect: only accept callbacks that point to our own
@@ -686,21 +692,26 @@ export async function buildSocialSignInUrl(
   const safeCallback = safeCallbackUrl(callbackURL);
 
   try {
-    const res = (await auth.api.signInSocial({
+    const result = await auth.api.signInSocial({
       body: {
         provider,
         callbackURL: safeCallback,
       },
       headers: getAuthHeaders(req),
-    })) as { url?: string; redirect?: boolean };
+      asResponse: true,
+    });
 
-    if (!res?.url) {
+    const setCookie = extractSetCookies(result as unknown as Response);
+    const json = (await result.json()) as { url?: string };
+    const url = json.url;
+
+    if (!url) {
       throw new ApiError(500, "Failed to start OAuth flow", {
         code: "OAUTH_INIT_FAILED",
       });
     }
 
-    return res.url;
+    return { url, setCookie };
   } catch (e) {
     translateBetterAuthError(e);
   }

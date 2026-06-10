@@ -1,4 +1,4 @@
-import type { SubscriptionPlan } from "../../../generated/prisma/client";
+import type { SubscriptionPlan } from "@prisma/client";
 import { config } from "../../config";
 import { getPlanLimits } from "../../constants/plans";
 import { isStripeConfigured } from "../../services/billing/stripe.client";

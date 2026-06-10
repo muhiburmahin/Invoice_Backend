@@ -1,6 +1,6 @@
 import type { Request } from "express";
 
-import type { Prisma } from "../../../generated/prisma/client";
+import type { Prisma } from "@prisma/client";
 
 /** Narrow alias — values we audit are always JSON-serialisable scalars. */
 type AuditChangeValue = string | number | boolean | null;

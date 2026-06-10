@@ -5,7 +5,7 @@ import {
   startOfDay,
 } from "date-fns";
 
-import type { RecurringFrequency, Prisma } from "../../../generated/prisma/client";
+import type { RecurringFrequency, Prisma } from "@prisma/client";
 import { ApiError } from "../../errors/ApiError";
 import { prisma } from "../../shared/prisma";
 

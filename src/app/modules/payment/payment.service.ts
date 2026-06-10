@@ -3,7 +3,7 @@ import { startOfMonth } from "date-fns";
 
 import { getMonthBuckets } from "../../../utils/monthBuckets";
 
-import type { PaymentStatus, Prisma } from "../../../generated/prisma/client";
+import type { PaymentStatus, Prisma } from "@prisma/client";
 import { ApiError } from "../../errors/ApiError";
 import { prisma } from "../../shared/prisma";
 import { buildPaginationMeta } from "../../shared/pagination";

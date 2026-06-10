@@ -1,6 +1,6 @@
 import "dotenv/config";
 
-import app from "./app";
+import app from "./createApp";
 import { config } from "./app/config";
 import { closeRedisConnection } from "./app/infrastructure/redis";
 import { closeScheduledJobsQueue } from "./app/infrastructure/scheduledJobs.queue";

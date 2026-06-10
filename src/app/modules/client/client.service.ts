@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 
 import type { Request } from "express";
 
-import type { Prisma } from "../../../generated/prisma/client";
+import type { Prisma } from "@prisma/client";
 import { ApiError } from "../../errors/ApiError";
 import { prisma } from "../../shared/prisma";
 import { buildPaginationMeta } from "../../shared/pagination";

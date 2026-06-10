@@ -6,7 +6,7 @@ import type {
   SubscriptionPlan,
   SubscriptionStatus,
   UserRole,
-} from "../../../generated/prisma/client";
+} from "@prisma/client";
 import { ApiError } from "../../errors/ApiError";
 import { prisma } from "../../shared/prisma";
 import { logger } from "../../shared/logger";

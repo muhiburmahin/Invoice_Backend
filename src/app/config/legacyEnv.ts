@@ -14,8 +14,9 @@ export function applyLegacyEnvAliases(): void {
     }
   };
 
-  setIfMissing("CLIENT_URL", "FRONTEND_URL", "APP_URL");
-  setIfMissing("BETTER_AUTH_URL", "BACKEND_URL");
+  setIfMissing("CLIENT_URL", "FRONTEND_URL", "APP_URL", "PROD_APP_URL");
+  // Better Auth callback must use the public frontend origin (Next.js proxies /api/auth).
+  setIfMissing("BETTER_AUTH_URL", "CLIENT_URL", "FRONTEND_URL", "APP_URL", "PROD_APP_URL");
 
   setIfMissing("SMTP_HOST", "EMAIL_SENDER_SMTP_HOST");
   setIfMissing("SMTP_PORT", "EMAIL_SENDER_SMTP_PORT");

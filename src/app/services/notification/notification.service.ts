@@ -3,7 +3,7 @@ import { addDays, differenceInCalendarDays, startOfDay } from "date-fns";
 import type {
   NotificationType,
   Prisma,
-} from "../../../generated/prisma/client";
+} from "@prisma/client";
 import { prisma } from "../../shared/prisma";
 
 export type CreateNotificationInput = {

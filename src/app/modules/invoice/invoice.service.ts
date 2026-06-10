@@ -7,7 +7,7 @@ import type {
   DiscountType,
   InvoiceStatus,
   Prisma,
-} from "../../../generated/prisma/client";
+} from "@prisma/client";
 import { ApiError } from "../../errors/ApiError";
 import { prisma } from "../../shared/prisma";
 import { buildPaginationMeta } from "../../shared/pagination";

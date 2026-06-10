@@ -20,7 +20,21 @@ if (!secret) {
   throw new Error("Set BETTER_AUTH_SECRET (min 32 characters) for Better Auth.");
 }
 
-const baseURL = config.betterAuthUrl ?? `http://localhost:${config.port}`;
+const baseURL = config.betterAuthUrl ?? config.clientUrl ?? `http://localhost:${config.port}`;
+
+function buildTrustedOrigins(): string[] {
+  const origins = new Set<string>(
+    [
+      config.clientUrl,
+      baseURL,
+      process.env.APP_URL,
+      process.env.PROD_APP_URL,
+      process.env.FRONTEND_URL,
+      ...config.corsOrigins,
+    ].filter((v): v is string => Boolean(v?.trim())),
+  );
+  return [...origins];
+}
 
 const googleEnabled =
   Boolean(config.googleClientId) && Boolean(config.googleClientSecret);
@@ -61,7 +75,7 @@ export const auth = betterAuth({
   basePath: "/api/auth",
   secret,
   baseURL,
-  trustedOrigins: [config.clientUrl, baseURL],
+  trustedOrigins: buildTrustedOrigins(),
 
   database: prismaAdapter(prisma, {
     provider: "postgresql",
@@ -126,13 +140,17 @@ export const auth = betterAuth({
     updateAge: 60 * 60 * 24,
     cookieCache: {
       enabled: true,
-      maxAge: 60 * 5,
+      maxAge: 5 * 60,
     },
   },
 
   advanced: {
-    crossSubDomainCookies: { enabled: false },
-    useSecureCookies: config.isProduction,
+    cookiePrefix: "better-auth",
+    useSecureCookies: process.env.NODE_ENV === "production",
+    crossSubDomainCookies: {
+      enabled: false,
+    },
+    disableCSRFCheck: true,
     defaultCookieAttributes: {
       sameSite: config.isProduction ? "none" : "lax",
       secure: config.isProduction,

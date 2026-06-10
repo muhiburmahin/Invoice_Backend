@@ -1,4 +1,4 @@
-import type { InvoiceStatus } from "../../../generated/prisma/client";
+import type { InvoiceStatus } from "@prisma/client";
 
 export const INVOICE_ROUTES = {
   list: "/",

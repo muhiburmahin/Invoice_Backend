@@ -1,6 +1,6 @@
 import type { RequestHandler } from "express";
 
-import type { SubscriptionPlan } from "../../generated/prisma/client";
+import type { SubscriptionPlan } from "@prisma/client";
 import { ApiError } from "../errors/ApiError";
 import { catchAsync } from "../shared/catchAsync";
 

@@ -3,7 +3,7 @@ import type Stripe from "stripe";
 import type {
   SubscriptionPlan,
   SubscriptionStatus,
-} from "../../../generated/prisma/client";
+} from "@prisma/client";
 import { ApiError } from "../../errors/ApiError";
 import { config } from "../../config";
 import { features } from "../../config/features";

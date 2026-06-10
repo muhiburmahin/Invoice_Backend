@@ -1,4 +1,4 @@
-import type { RecurringFrequency } from "../../../generated/prisma/client";
+import type { RecurringFrequency } from "@prisma/client";
 
 export const RECURRING_ROUTES = {
   list: "/",
