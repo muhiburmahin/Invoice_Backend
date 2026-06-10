@@ -9,14 +9,19 @@ import { sendSuccess } from "../../shared/sendResponse";
 import { getUsageSnapshot } from "../../services/billing/planUsage.service";
 import { handleStripeWebhook, getStripeCheckoutMeta } from "../../services/billing/stripeCheckout.service";
 import {
+  getOfflineBillingPublicInfo,
+  submitOfflineUpgradeRequest,
+} from "../../services/billing/offlineUpgrade.service";
+import {
   createBillingPortalSession,
   createPlanCheckoutSession,
-  getSaasBillingMeta,
+  getSaasBillingMetaForUser,
 } from "../../services/billing/stripeSubscription.service";
 
 import {
   createBillingPortalSchema,
   createPlanCheckoutSchema,
+  offlineUpgradeRequestSchema,
 } from "./billing.validation";
 
 export const billingRouter = Router();
@@ -36,11 +41,42 @@ const moderate = rateLimit({
 billingRouter.get(
   "/meta",
   loadSubscription,
-  catchAsync(async (_req, res) => {
+  catchAsync(async (req, res) => {
+    const userId = req.auth!.user.id;
     sendSuccess(res, {
       invoicePayments: getStripeCheckoutMeta(),
-      saas: getSaasBillingMeta(),
+      saas: await getSaasBillingMetaForUser(userId),
     });
+  }),
+);
+
+billingRouter.get(
+  "/offline-info",
+  catchAsync(async (_req, res) => {
+    sendSuccess(res, { offline: getOfflineBillingPublicInfo() });
+  }),
+);
+
+billingRouter.post(
+  "/offline-request",
+  moderate,
+  loadSubscription,
+  validateRequest({ body: offlineUpgradeRequestSchema.shape.body }),
+  catchAsync(async (req, res) => {
+    const userId = req.auth!.user.id;
+    const body = req.body as {
+      plan: "PRO";
+      paymentReference?: string;
+      note?: string;
+    };
+
+    const result = await submitOfflineUpgradeRequest(req, userId, {
+      plan: body.plan,
+      paymentReference: body.paymentReference,
+      note: body.note,
+    });
+
+    sendSuccess(res, result);
   }),
 );
 

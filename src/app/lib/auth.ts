@@ -5,6 +5,10 @@ import { config } from "../config";
 import { prisma } from "../shared/prisma";
 import { logger } from "../shared/logger";
 import { isEmailConfigured, sendTransactionalMail } from "../services/email";
+import {
+  buildResetPasswordEmailContent,
+  buildVerifyEmailContent,
+} from "../services/email/transactionalMail.templates";
 
 const secret =
   config.betterAuthSecret ??
@@ -96,15 +100,11 @@ export const auth = betterAuth({
     maxPasswordLength: 128,
     sendResetPassword: async ({ user, token }) => {
       const resetUrl = toFrontendUrl("/auth/reset-password", token);
-      await safeSendMail(
-        user.email,
-        "Reset your Invoice password",
-        `<p>Hi ${user.name ?? "there"},</p>
-         <p>You requested to reset your password. Click the link below to set a new one. This link expires in 1 hour.</p>
-         <p><a href="${resetUrl}" target="_blank" rel="noopener">Reset Password</a></p>
-         <p>If you did not request this, you can safely ignore this email.</p>`,
-        `Reset your Invoice password: ${resetUrl} (expires in 1 hour)`,
-      );
+      const mail = buildResetPasswordEmailContent({
+        recipientName: user.name ?? "there",
+        resetUrl,
+      });
+      await safeSendMail(user.email, mail.subject, mail.html, mail.text);
     },
   },
 
@@ -113,15 +113,11 @@ export const auth = betterAuth({
     autoSignInAfterVerification: true,
     sendVerificationEmail: async ({ user, token }) => {
       const verifyUrl = toFrontendUrl("/auth/verify-email", token);
-      await safeSendMail(
-        user.email,
-        "Verify your Invoice email",
-        `<p>Hi ${user.name ?? "there"},</p>
-         <p>Welcome to Invoice! Please verify your email address by clicking the link below.</p>
-         <p><a href="${verifyUrl}" target="_blank" rel="noopener">Verify Email</a></p>
-         <p>This link will expire in 24 hours.</p>`,
-        `Verify your Invoice email: ${verifyUrl} (expires in 24 hours)`,
-      );
+      const mail = buildVerifyEmailContent({
+        recipientName: user.name ?? "there",
+        verifyUrl,
+      });
+      await safeSendMail(user.email, mail.subject, mail.html, mail.text);
     },
   },
 

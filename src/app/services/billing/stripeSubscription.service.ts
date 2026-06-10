@@ -10,6 +10,10 @@ import { features } from "../../config/features";
 import { prisma } from "../../shared/prisma";
 import { writeAuditLog } from "../audit/auditLog.service";
 import { notifySubscriptionCancelled } from "../notification";
+import {
+  getOfflineBillingPublicInfo,
+  hasPendingOfflineUpgrade,
+} from "./offlineUpgrade.service";
 
 import { getStripeClient, isStripeConfigured } from "./stripe.client";
 
@@ -28,6 +32,12 @@ function assertStripeBillingEnabled(): void {
   }
 }
 
+export function isProStripeCheckoutConfigured(): boolean {
+  return Boolean(
+    config.stripe.prices.proMonthly?.trim() || config.stripe.dynamicPro,
+  );
+}
+
 export function getStripePriceId(plan: UpgradeablePlan): string {
   const priceId =
     plan === "PRO"
@@ -42,6 +52,40 @@ export function getStripePriceId(plan: UpgradeablePlan): string {
   }
 
   return priceId.trim();
+}
+
+function buildCheckoutLineItems(plan: UpgradeablePlan) {
+  const priceId =
+    plan === "PRO"
+      ? config.stripe.prices.proMonthly?.trim()
+      : config.stripe.prices.enterpriseMonthly?.trim();
+
+  if (priceId) {
+    return [{ price: priceId, quantity: 1 }];
+  }
+
+  if (plan === "PRO" && config.stripe.dynamicPro) {
+    const { amount, currency } = config.stripe.dynamicPro;
+    return [
+      {
+        price_data: {
+          currency,
+          unit_amount: amount,
+          recurring: { interval: "month" as const },
+          product_data: {
+            name: "Invoice Pro",
+            metadata: { plan: "PRO" },
+          },
+        },
+        quantity: 1,
+      },
+    ];
+  }
+
+  throw new ApiError(503, `Stripe price is not configured for ${plan}`, {
+    code: "STRIPE_PRICE_NOT_CONFIGURED",
+    details: { plan },
+  });
 }
 
 export function planFromStripePriceId(priceId: string): SubscriptionPlan | null {
@@ -143,14 +187,13 @@ export async function createPlanCheckoutSession(input: {
     });
   }
 
-  const priceId = getStripePriceId(input.plan);
   const customerId = await ensureStripeCustomer(input.userId);
   const stripe = getStripeClient();
 
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     customer: customerId,
-    line_items: [{ price: priceId, quantity: 1 }],
+    line_items: buildCheckoutLineItems(input.plan),
     success_url: input.successUrl,
     cancel_url: input.cancelUrl,
     metadata: {
@@ -223,7 +266,12 @@ export async function syncSubscriptionFromStripe(
   }
 
   const priceId = stripeSubscription.items.data[0]?.price.id;
-  const mappedPlan = priceId ? planFromStripePriceId(priceId) : null;
+  const mappedPlan =
+    (priceId ? planFromStripePriceId(priceId) : null) ??
+    (stripeSubscription.metadata?.plan === "PRO" ||
+    stripeSubscription.metadata?.plan === "ENTERPRISE"
+      ? (stripeSubscription.metadata.plan as SubscriptionPlan)
+      : null);
   const previousPlan = subscriptionRow.plan;
   const previousStatus = subscriptionRow.status;
   const previousCancelAtPeriodEnd = subscriptionRow.cancelAtPeriodEnd;
@@ -287,9 +335,17 @@ export async function handleSubscriptionCheckoutCompleted(
 
   if (!userId || !subscriptionId) return;
 
+  const requestedPlan =
+    session.metadata?.plan === "PRO" || session.metadata?.plan === "ENTERPRISE"
+      ? (session.metadata.plan as SubscriptionPlan)
+      : undefined;
+
   await prisma.subscription.update({
     where: { userId },
-    data: { stripeSubscriptionId: subscriptionId },
+    data: {
+      stripeSubscriptionId: subscriptionId,
+      ...(requestedPlan ? { plan: requestedPlan, status: "ACTIVE" as const } : {}),
+    },
   });
 
   const stripe = getStripeClient();
@@ -339,19 +395,33 @@ export async function handleSubscriptionDeleted(
 }
 
 export function getSaasBillingMeta() {
+  const offline = getOfflineBillingPublicInfo();
+  const proStripeReady = isProStripeCheckoutConfigured();
+
   return {
     upgradeablePlans: UPGRADEABLE_PLANS,
     pricesConfigured: {
-      PRO: Boolean(config.stripe.prices.proMonthly),
-      ENTERPRISE: Boolean(config.stripe.prices.enterpriseMonthly),
+      PRO: proStripeReady,
+      ENTERPRISE: Boolean(config.stripe.prices.enterpriseMonthly?.trim()),
     },
     subscriptionCheckoutAvailable:
       features.isBillingEnabled() &&
       isStripeConfigured() &&
-      Boolean(
-        config.stripe.prices.proMonthly || config.stripe.prices.enterpriseMonthly,
-      ),
+      (proStripeReady || Boolean(config.stripe.prices.enterpriseMonthly?.trim())),
     portalAvailable:
       features.isBillingEnabled() && isStripeConfigured(),
+    offlineUpgrade: offline,
+  };
+}
+
+export async function getSaasBillingMetaForUser(userId: string) {
+  const meta = getSaasBillingMeta();
+  const pendingOfflineUpgrade = meta.offlineUpgrade.enabled
+    ? await hasPendingOfflineUpgrade(userId)
+    : false;
+
+  return {
+    ...meta,
+    pendingOfflineUpgrade,
   };
 }

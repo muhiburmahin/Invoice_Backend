@@ -59,11 +59,25 @@ const envSchema = z
     STRIPE_WEBHOOK_SECRET: z.string().optional(),
     STRIPE_PRICE_PRO_MONTHLY: z.string().optional(),
     STRIPE_PRICE_ENTERPRISE_MONTHLY: z.string().optional(),
+    /** Fallback when STRIPE_PRICE_PRO_MONTHLY is empty — amount in smallest currency unit (e.g. 1900 = $19.00) */
+    STRIPE_PRO_AMOUNT: z.coerce.number().int().positive().optional(),
+    STRIPE_PRO_CURRENCY: z.string().optional().default("usd"),
 
     FEATURE_BILLING: z
       .string()
       .optional()
       .transform((v) => v === "true" || v === "1"),
+    FEATURE_OFFLINE_BILLING: z
+      .string()
+      .optional()
+      .transform((v) => v === "true" || v === "1"),
+    OFFLINE_PRO_PRICE: z.string().optional(),
+    OFFLINE_PRO_CURRENCY: z.string().optional().default("BDT"),
+    OFFLINE_PAYMENT_BKASH: z.string().optional(),
+    OFFLINE_PAYMENT_NAGAD: z.string().optional(),
+    OFFLINE_PAYMENT_BANK_NAME: z.string().optional(),
+    OFFLINE_PAYMENT_BANK_ACCOUNT: z.string().optional(),
+    OFFLINE_PAYMENT_INSTRUCTIONS: z.string().optional(),
     FEATURE_AUDIT_LOG: z
       .string()
       .optional()

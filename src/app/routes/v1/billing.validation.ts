@@ -25,3 +25,19 @@ export type CreatePlanCheckoutInput = z.infer<
 export type CreateBillingPortalInput = z.infer<
   typeof createBillingPortalSchema
 >["body"];
+
+export const offlineUpgradeRequestSchema = z.object({
+  body: z.object({
+    plan: z.enum(["PRO"], { message: "plan must be PRO" }),
+    paymentReference: z
+      .string()
+      .trim()
+      .min(4, "Transaction ID must be at least 4 characters")
+      .max(120, "Transaction ID is too long"),
+    note: z.string().trim().max(500, "Note cannot exceed 500 characters").optional(),
+  }),
+});
+
+export type OfflineUpgradeRequestInput = z.infer<
+  typeof offlineUpgradeRequestSchema
+>["body"];

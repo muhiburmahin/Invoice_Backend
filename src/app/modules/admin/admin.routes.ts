@@ -12,6 +12,7 @@ import {
   activityLogsHandler,
   deleteUserHandler,
   getUserDetailHandler,
+  listUpgradeRequestsHandler,
   listUsersHandler,
   runScheduledJobsHandler,
   statsHandler,
@@ -56,6 +57,8 @@ adminRouter.get(
 );
 
 adminRouter.get("/stats", statsHandler);
+
+adminRouter.get("/upgrade-requests", listUpgradeRequestsHandler);
 
 adminRouter.get(
   "/activity-logs",

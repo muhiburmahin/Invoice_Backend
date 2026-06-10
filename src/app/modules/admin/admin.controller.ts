@@ -5,6 +5,7 @@ import { getValidatedQuery } from "../../middlewares/validateRequest";
 import { catchAsync } from "../../shared/catchAsync";
 import { sendSuccess } from "../../shared/sendResponse";
 
+import { listPendingOfflineUpgradeRequests } from "../../services/billing/offlineUpgrade.service";
 import {
   deleteUser,
   getPlatformStats,
@@ -127,6 +128,13 @@ export const activityLogsHandler: RequestHandler = catchAsync(async (req, res) =
   );
   sendSuccess(res, { logs: rows }, 200, meta);
 });
+
+export const listUpgradeRequestsHandler: RequestHandler = catchAsync(
+  async (_req, res) => {
+    const requests = await listPendingOfflineUpgradeRequests();
+    sendSuccess(res, { requests });
+  },
+);
 
 export const runScheduledJobsHandler: RequestHandler = catchAsync(
   async (req, res) => {

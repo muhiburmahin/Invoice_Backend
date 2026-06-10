@@ -69,12 +69,32 @@ export const config = {
       proMonthly: env.STRIPE_PRICE_PRO_MONTHLY,
       enterpriseMonthly: env.STRIPE_PRICE_ENTERPRISE_MONTHLY,
     },
+    dynamicPro:
+      env.STRIPE_PRO_AMOUNT && env.STRIPE_PRO_AMOUNT > 0
+        ? {
+            amount: env.STRIPE_PRO_AMOUNT,
+            currency: (env.STRIPE_PRO_CURRENCY ?? "usd").toLowerCase(),
+          }
+        : null,
   },
 
   features: {
     billing: Boolean(env.FEATURE_BILLING),
+    offlineBilling: Boolean(env.FEATURE_OFFLINE_BILLING),
     auditLog: Boolean(env.FEATURE_AUDIT_LOG),
     scheduledJobs: Boolean(env.FEATURE_SCHEDULED_JOBS),
+  },
+
+  offlineBilling: {
+    proPrice: env.OFFLINE_PRO_PRICE?.trim() || "999",
+    currency: env.OFFLINE_PRO_CURRENCY?.trim() || "BDT",
+    bkash: env.OFFLINE_PAYMENT_BKASH?.trim() || "",
+    nagad: env.OFFLINE_PAYMENT_NAGAD?.trim() || "",
+    bankName: env.OFFLINE_PAYMENT_BANK_NAME?.trim() || "",
+    bankAccount: env.OFFLINE_PAYMENT_BANK_ACCOUNT?.trim() || "",
+    instructions:
+      env.OFFLINE_PAYMENT_INSTRUCTIONS?.trim() ||
+      "Send payment using bKash or bank transfer, then submit your transaction ID below. An admin will activate Pro within 24 hours.",
   },
 
   scheduledJobsIntervalMs: env.SCHEDULED_JOBS_INTERVAL_MS,
